@@ -1,6 +1,5 @@
 use crate::simulation_domain_2d::SimulationDomain2D;
 use crate::geometry::orient_2d;
-use rand;
 
 
 fn random_choose<T>(option1: T, option2: T) -> T {
@@ -34,21 +33,27 @@ impl DelaunayVertex2D {
 struct DelaunayTriangle2D {
     vertices: [i64; 3],
     neighbours: [i64; 3],
+    index_in_neighbours: [i8; 3]
 }
 
 impl Default for DelaunayTriangle2D {
     fn default() -> DelaunayTriangle2D {
-        DelaunayTriangle2D { vertices: [-1, -1, -1], neighbours: [-1, -1, -1] }
+        DelaunayTriangle2D {
+            vertices: [-1, -1, -1],
+            neighbours: [-1, -1, -1],
+            index_in_neighbours: [-1, -1, -1] }
     }
 }
 
 impl DelaunayTriangle2D {
-    fn update_neighbours(&mut self, n0: i64, n1: i64, n2: i64) {
+    fn update_neighbours(&mut self, n0: i64, n1: i64, n2: i64, idx_in_n0: i8, idx_in_n1: i8, idx_in_n2: i8) {
         self.neighbours = [n0, n1, n2];
+        self.index_in_neighbours = [idx_in_n0, idx_in_n1, idx_in_n2];
     }
 
-    fn update_neighbour(&mut self, n: i64, i: usize) {
-        self.neighbours[i] = n;
+    fn update_neighbour(&mut self, n: i64, idx_in_n: i8, i: i8) {
+        self.neighbours[i as usize] = n;
+        self.index_in_neighbours[i as usize] = idx_in_n;
     }
 }
 
@@ -91,10 +96,11 @@ impl DelaunayTriangulation2D {
         let dummy1 = triangulation.new_triangle(v2, v0, -1);
         let dummy2 = triangulation.new_triangle(v0, v1, -1);
         let first_triangle = triangulation.new_triangle(v0, v1, v2);
-        triangulation.triangles[first_triangle as usize].update_neighbours(dummy0, dummy1, dummy2);
-        triangulation.triangles[dummy0 as usize].update_neighbour(first_triangle, 0);
-        triangulation.triangles[dummy1 as usize].update_neighbour(first_triangle, 1);
-        triangulation.triangles[dummy2 as usize].update_neighbour(first_triangle, 2);
+        triangulation.triangles[first_triangle as usize].update_neighbours(dummy0, dummy1, dummy2,
+                                                                           0, 1, 2);
+        triangulation.triangles[dummy0 as usize].update_neighbour(first_triangle, 0, 0);
+        triangulation.triangles[dummy1 as usize].update_neighbour(first_triangle, 1, 1);
+        triangulation.triangles[dummy2 as usize].update_neighbour(first_triangle, 2, 2);
 
         triangulation.consistency_check();
 
@@ -111,18 +117,26 @@ impl DelaunayTriangulation2D {
         // Create 3 new triangles
         let (v0, v1, v2) = (triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
         let (n0, n1, n2) = (triangle.neighbours[0], triangle.neighbours[1], triangle.neighbours[2]);
+        let (idx_in_n0, idx_in_n1, idx_in_n2) = (
+            triangle.index_in_neighbours[0],
+            triangle.index_in_neighbours[1],
+            triangle.index_in_neighbours[2]
+        );
 
         let triangle0 = self.new_triangle_at(v1, v2, new_vertex_idx, triangle_idx);
         let triangle1 = self.new_triangle(v2, v0, new_vertex_idx);
         let triangle2 = self.new_triangle(v0, v1, new_vertex_idx);
 
         // Update neighbours
-        self.triangles[triangle0 as usize].update_neighbours(n0, triangle2, triangle1);
-        self.triangles[n0 as usize].update_neighbour(triangle0, 0);
-        self.triangles[triangle1 as usize].update_neighbours(triangle2, n1, triangle0);
-        self.triangles[n1 as usize].update_neighbour(triangle1, 1);
-        self.triangles[triangle2 as usize].update_neighbours(triangle1, triangle0, n2);
-        self.triangles[n2 as usize].update_neighbour(triangle2, 2);
+        self.triangles[triangle0 as usize].update_neighbours(triangle1, triangle2, n0,
+                                                             1, 0, idx_in_n0);
+        self.triangles[triangle1 as usize].update_neighbours(triangle2, triangle0, n1,
+                                                             1, 0, idx_in_n1);
+        self.triangles[triangle2 as usize].update_neighbours(triangle0, triangle1, n2,
+                                                             1, 0, idx_in_n2);
+        self.triangles[n0 as usize].update_neighbour(triangle0, 2, idx_in_n0);
+        self.triangles[n1 as usize].update_neighbour(triangle1, 2, idx_in_n1);
+        self.triangles[n2 as usize].update_neighbour(triangle2, 2, idx_in_n2);
 
 
         // TODO: check new triangles for delaunay criterion and add to fixing queue if necessary
@@ -211,11 +225,11 @@ impl DelaunayTriangulation2D {
             } else if test2 <= 0.{
                 current_triangle_idx = current_triangle.neighbours[2];
             } else {
-                println!("Error! This scenario should not be possible?")
+                panic!("Error! This scenario should not be possible?")
             }
 
-            if current_triangle_idx == -1 {
-                println!("Error! Ended up with dummy triangle")
+            if current_triangle_idx < 3 {
+                panic!("Ended up with dummy triangle!");
             }
         }
         current_triangle_idx
@@ -228,7 +242,7 @@ impl DelaunayTriangulation2D {
             let triangle_idx = (i + 3) as i64;
             for (j, &ngbr) in triangle.neighbours.iter().enumerate() {
                 assert_eq!(triangle_idx,
-                           self.triangles[ngbr as usize].neighbours[j],
+                           self.triangles[ngbr as usize].neighbours[triangle.index_in_neighbours[j] as usize],
                            "Testing neighbour symmetry");
             }
             // TODO check overlapping vertices?
