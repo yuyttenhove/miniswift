@@ -12,7 +12,10 @@ fn main() {
     d.insert_point(0.5, 0.5);
     d.insert_point(0.75, 0.95);
     println!("{:?}", d);
+    d.to_file("test.txt");
     d.insert_point(0.7428268981520153, 0.31356860018279131);
-    d.insert_point(rand::random::<f64>(), rand::random::<f64>());
+    for _ in 1..2 {
+        d.insert_point(rand::random::<f64>(), rand::random::<f64>());
+    }
     println!("{:?}", d);
 }

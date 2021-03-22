@@ -1,5 +1,7 @@
 use crate::simulation_domain_2d::SimulationDomain2D;
-use crate::geometry::orient_2d;
+use crate::geometry::{orient_2d, in_circle_2d};
+use std::collections::VecDeque;
+use std::fs;
 
 
 fn random_choose<T>(option1: T, option2: T) -> T {
@@ -65,7 +67,9 @@ pub struct DelaunayTriangulation2D {
     anchor: [f64; 2],
     side: f64,
     inverse_side: f64,
-    current_triangle: i64
+    current_triangle_idx: i64,
+    current_vertex_idx: i64,
+    triangles_to_check: VecDeque<i64>
 }
 
 impl DelaunayTriangulation2D {
@@ -104,15 +108,17 @@ impl DelaunayTriangulation2D {
 
         triangulation.consistency_check();
 
-        triangulation.current_triangle = first_triangle;
+        triangulation.current_triangle_idx = first_triangle;
         triangulation
     }
 
     pub fn insert_point(&mut self, x: f64, y: f64) {
-        let new_vertex_idx = self.new_vertex(x, y);
+        // add vertex
+        self.new_vertex(x, y);
+
         // Find triangle in which (x, y) is positioned
-        let triangle_idx = self.find_triangle_containing_vertex(&self.vertices[new_vertex_idx as usize]);
-        let triangle = &self.triangles[triangle_idx as usize];
+        self.find_triangle_containing_current_vertex();
+        let triangle = &self.triangles[self.current_triangle_idx as usize];
 
         // Create 3 new triangles
         let (v0, v1, v2) = (triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
@@ -123,9 +129,9 @@ impl DelaunayTriangulation2D {
             triangle.index_in_neighbours[2]
         );
 
-        let triangle0 = self.new_triangle_at(v1, v2, new_vertex_idx, triangle_idx);
-        let triangle1 = self.new_triangle(v2, v0, new_vertex_idx);
-        let triangle2 = self.new_triangle(v0, v1, new_vertex_idx);
+        let triangle0 = self.new_triangle_at(v1, v2, self.current_vertex_idx, self.current_triangle_idx);
+        let triangle1 = self.new_triangle(v2, v0, self.current_vertex_idx);
+        let triangle2 = self.new_triangle(v0, v1, self.current_vertex_idx);
 
         // Update neighbours
         self.triangles[triangle0 as usize].update_neighbours(triangle1, triangle2, n0,
@@ -138,20 +144,39 @@ impl DelaunayTriangulation2D {
         self.triangles[n1 as usize].update_neighbour(triangle1, 2, idx_in_n1);
         self.triangles[n2 as usize].update_neighbour(triangle2, 2, idx_in_n2);
 
+        // Add new triangles to queue to check for delaunayness and check the criterion
+        self.triangles_to_check.push_back(triangle0);
+        self.triangles_to_check.push_back(triangle1);
+        self.triangles_to_check.push_back(triangle2);
 
-        // TODO: check new triangles for delaunay criterion and add to fixing queue if necessary
-
-        // TODO: fix triangles until queue is empty
+        self.fix_delaunayness();
 
         self.consistency_check();
     }
 
+    pub fn to_str(&self) -> String {
+        let mut result = String::from("# Vertices #\n");
+        for (i, v) in self.vertices.iter().enumerate() {
+            result += &format!("{}\t({}, {})\n", i, v.x, v.y);
+        }
+
+        result += "\n# Triangles #\n";
+        for (i, triangle) in self.triangles[3..].iter().enumerate() {
+            result += &format!("{}\t({}, {}, {})\n", i, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
+        }
+        result
+    }
+
+    pub fn to_file(&self, filename: &str) {
+        fs::write(filename, self.to_str()).expect("Unable to write to file!");
+    }
+
     fn new_vertex(&mut self, x: f64, y: f64) -> i64 {
         // TODO possibly manage the size of self.vertices more intelligently.
-        let vertex = self.vertices.len() as i64;
+        self.current_vertex_idx = self.vertices.len() as i64;
         self.vertices.push(DelaunayVertex2D{x, y, ..DelaunayVertex2D::default()});
 
-        vertex
+        self.current_vertex_idx
     }
 
     fn new_triangle(&mut self, v0: i64, v1: i64, v2: i64) -> i64 {
@@ -186,12 +211,13 @@ impl DelaunayTriangulation2D {
         at
     }
 
-    fn find_triangle_containing_vertex(&self, vertex: &DelaunayVertex2D) -> i64 {
+    fn find_triangle_containing_current_vertex(&mut self){
+        let vertex = &self.vertices[self.current_vertex_idx as usize];
         let mut v0: &DelaunayVertex2D;
         let mut v1: &DelaunayVertex2D;
         let mut v2: &DelaunayVertex2D;
         let mut current_triangle: &DelaunayTriangle2D;
-        let mut current_triangle_idx = self.current_triangle;
+        let mut current_triangle_idx = self.current_triangle_idx;
         let mut found = false;
         let mut test0: f64;
         let mut test1: f64;
@@ -232,7 +258,69 @@ impl DelaunayTriangulation2D {
                 panic!("Ended up with dummy triangle!");
             }
         }
-        current_triangle_idx
+        self.current_triangle_idx = current_triangle_idx;
+    }
+
+    fn fix_delaunayness(&mut self) {
+        while !self.triangles_to_check.is_empty() {
+            let triangle_to_fix_idx = self.triangles_to_check.pop_front().unwrap();
+            self.fix_triangle(triangle_to_fix_idx);
+        }
+    }
+
+    fn fix_triangle(&mut self, triangle_idx: i64) {
+        let triangle = &self.triangles[triangle_idx as usize];
+        let neighbour_idx = triangle.neighbours[2];
+        if neighbour_idx < 3 {
+            return
+        }
+
+        let a = &self.vertices[triangle.vertices[0] as usize];
+        let b = &self.vertices[triangle.vertices[1] as usize];
+        let c = &self.vertices[triangle.vertices[2] as usize];
+
+        let neighbour = &self.triangles[neighbour_idx as usize];
+        let d = &self.vertices[neighbour.vertices[triangle.index_in_neighbours[2] as usize] as usize];
+
+        let test = in_circle_2d(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y);
+
+        if test < 0. {
+            self.flip_triangles(triangle_idx, neighbour_idx);
+        }
+    }
+
+    fn flip_triangles(&mut self, triangle_idx: i64, neighbour_idx: i64) {
+        let triangle = &self.triangles[triangle_idx as usize];
+        let neighbour = &self.triangles[neighbour_idx as usize];
+
+        // read necessary info
+        let (ai, bi, ci) = (triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
+        let (na, nb) = (triangle.neighbours[0], triangle.neighbours[1]);
+        let idx_in_na = triangle.index_in_neighbours[0];
+        let idx_in_nb = triangle.index_in_neighbours[1];
+
+        let idx_in_neighbour = triangle.index_in_neighbours[2] as usize;
+        let fi = neighbour.vertices[idx_in_neighbour];
+        let nd = neighbour.neighbours[(idx_in_neighbour + 1) % 3];
+        let ne = neighbour.neighbours[(idx_in_neighbour + 2) % 3];
+        let idx_in_nd = neighbour.index_in_neighbours[(idx_in_neighbour + 1) % 3];
+        let idx_in_ne = neighbour.index_in_neighbours[(idx_in_neighbour + 2) % 3];
+
+        // create new triangles
+        let t0 = self.new_triangle_at(ai, fi, ci, triangle_idx);
+        let t1 = self.new_triangle_at(fi, bi, ci, neighbour_idx);
+
+        // fix neighbours
+        self.triangles[t0 as usize].update_neighbours(t1, nb, nd, 1, idx_in_nb, idx_in_nd);
+        self.triangles[t1 as usize].update_neighbours(na, t0, ne, idx_in_na, 0, idx_in_ne);
+        self.triangles[na as usize].update_neighbour(t1, 0, idx_in_na);
+        self.triangles[nd as usize].update_neighbour(t0, 2, idx_in_nd);
+
+        self.triangles_to_check.push_back(t0);
+        self.triangles_to_check.push_back(t1);
+
+        // update current_triangle
+        self.current_triangle_idx = t1;
     }
 
     fn consistency_check(&self) {

@@ -8,3 +8,28 @@ pub fn orient_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> f64 {
 
     s1x*s2y - s1y*s2x
 }
+
+
+pub fn in_circle_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64, dx: f64, dy: f64) -> f64 {
+    let s1x = bx - ax;
+    let s1y = by - ay;
+    let s2x = cx - ax;
+    let s2y = cy - ay;
+    let s3x = dx - ax;
+    let s3y = dy - ay;
+    let (mut tmp1, mut tmp2, mut result): (f64, f64, f64);
+
+    tmp1 = s2x*s2x +s2y*s2y;
+    tmp2 = s3x*s3x +s3y*s3y;
+    result = s1x * (s2y * tmp2 - s3y*tmp1);
+
+    tmp1 = s1x*s1x +s1y*s1y;
+    tmp2 = s3x*s3x +s3y*s3y;
+    result -= s2x * (s1y * tmp2 - s3y*tmp1);
+
+    tmp1 = s1x*s1x +s1y*s1y;
+    tmp2 = s2x*s2x +s2y*s2y;
+    result += s3x * (s1y * tmp2 - s2y*tmp1);
+
+    result
+}
