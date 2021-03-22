@@ -151,7 +151,7 @@ impl DelaunayTriangulation2D {
 
         self.fix_delaunayness();
 
-        self.consistency_check();
+        // self.consistency_check();
     }
 
     pub fn to_str(&self) -> String {
