@@ -1,4 +1,5 @@
-
+/// Returns a positive value when the triangle formed by (ax, ay), (bx, by) and (cx, cy) is
+/// positively oriented.
 pub fn orient_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> f64 {
     let s1x = ax - cx;
     let s1y = ay - cy;
@@ -9,7 +10,10 @@ pub fn orient_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> f64 {
     s1x*s2y - s1y*s2x
 }
 
-
+/// Returns a negative value when (dx, dy) lies in the circumscribed sphere around the triangle
+/// formed by (ax, ay), (bx, by) and (cx, cy), provided that this triangle is positively oriented,
+/// a positive value when the point d lies outside and zero when the point d lies on this
+/// circumscribed sphere.
 pub fn in_circle_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64, dx: f64, dy: f64) -> f64 {
     let s1x = bx - ax;
     let s1y = by - ay;

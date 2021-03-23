@@ -327,23 +327,48 @@ impl DelaunayTriangulation2D {
     }
 
     fn consistency_check(&self) {
+        if ! cfg!(debug_assertions) {
+            return
+        }
         // for each triangle check neighbour symmetry and check delaunay criterion
         // for each vertex check triangle information
         for (i, triangle) in self.triangles[3..].iter().enumerate() {
             let triangle_idx = (i + 3) as i64;
             for (j, &ngbr) in triangle.neighbours.iter().enumerate() {
+                // check neighbouring relation symmetry
+                let idx_in_ngbr = triangle.index_in_neighbours[j] as usize;
                 assert_eq!(triangle_idx,
-                           self.triangles[ngbr as usize].neighbours[triangle.index_in_neighbours[j] as usize],
+                           self.triangles[ngbr as usize].neighbours[idx_in_ngbr],
                            "Testing neighbour symmetry");
-            }
-            // TODO check overlapping vertices?
-            // TODO check circumcircle
-        }
 
+                // check overlapping vertices
+                let neighbour = &self.triangles[ngbr as usize];
+                let mut n_overlap = 0;
+                for i in triangle.vertices.iter() {
+                    if neighbour.vertices.contains(i) {
+                        n_overlap += 1;
+                    }
+                }
+                assert_eq!(n_overlap, 2, "Neighbours should have exactly 2 vertices in common!");
+
+                // check Delaunay criterion
+                // skip dummy triangles
+                if ngbr < 3 {
+                    continue;
+                }
+                let (a, b, c) = (&self.vertices[triangle.vertices[0] as usize],
+                                 &self.vertices[triangle.vertices[1] as usize],
+                                 &self.vertices[triangle.vertices[2] as usize]);
+                let d = &self.vertices[neighbour.vertices[idx_in_ngbr] as usize];
+                let in_circle = in_circle_2d(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y);
+                assert!(in_circle >= 0., "in_circle test gave {:?}", in_circle)
+            }
+        }
         for (i, vertex) in self.vertices.iter().enumerate() {
             assert_eq!(i as i64,
                        self.triangles[vertex.triangle as usize].vertices[vertex.triangle_index as usize],
                        "Testing vertex-triangle correspondence");
         }
+        // println!("Consistency checks passed!");
     }
 }

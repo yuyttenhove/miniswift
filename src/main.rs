@@ -1,6 +1,7 @@
 mod delaunay_triangulation_2d;
 mod simulation_domain_2d;
 mod geometry;
+mod voronoi_grid_2d;
 
 use delaunay_triangulation_2d::{DelaunayTriangulation2D};
 use simulation_domain_2d::SimulationDomain2D;
