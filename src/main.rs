@@ -5,6 +5,7 @@ mod voronoi_grid_2d;
 
 use delaunay_triangulation_2d::{DelaunayTriangulation2D};
 use simulation_domain_2d::SimulationDomain2D;
+use voronoi_grid_2d::VoronoiGrid2D;
 
 fn main() {
     let domain = SimulationDomain2D::new([0., 0.], [1., 1.]);
@@ -14,6 +15,7 @@ fn main() {
     for _ in 0..100 {
         d.insert_point(rand::random::<f64>() * 2., rand::random::<f64>() * 2.);
     }
-    println!("{:?}", d);
+    let g = VoronoiGrid2D::from_delaunay_triangulation(&d);
+    println!("{:?}", g);
     d.to_file("test.txt");
 }
