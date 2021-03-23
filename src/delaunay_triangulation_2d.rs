@@ -151,7 +151,7 @@ impl DelaunayTriangulation2D {
 
         self.fix_delaunayness();
 
-        // self.consistency_check();
+        self.consistency_check();
     }
 
     pub fn to_str(&self) -> String {
@@ -315,6 +315,9 @@ impl DelaunayTriangulation2D {
         self.triangles[t1 as usize].update_neighbours(na, t0, ne, idx_in_na, 0, idx_in_ne);
         self.triangles[na as usize].update_neighbour(t1, 0, idx_in_na);
         self.triangles[nd as usize].update_neighbour(t0, 2, idx_in_nd);
+        // here the neighbours do not change, but idx_in_neighbour might change!
+        self.triangles[nb as usize].update_neighbour(t0, 1, idx_in_nb);
+        self.triangles[ne as usize].update_neighbour(t1, 2, idx_in_ne);
 
         self.triangles_to_check.push_back(t0);
         self.triangles_to_check.push_back(t1);
