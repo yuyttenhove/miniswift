@@ -13,7 +13,7 @@ fn main() {
     println!("{:?}", d);
 
     for _ in 0..100 {
-        d.insert_point(rand::random::<f64>() * 2., rand::random::<f64>() * 2.);
+        d.insert_point(rand::random::<f64>(), rand::random::<f64>());
     }
     let g = VoronoiGrid2D::from_delaunay_triangulation(&d);
     println!("{:?}", g);

@@ -9,6 +9,8 @@ import numpy as np
 def plot_tesselation(vertices, triangles):
     ax = sns.scatterplot(data=vertices, x="x", y="y", s=8, color="black")
     ax.triplot(vertices["x"], vertices["y"], triangles=triangles, lw=.5, color="black")
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
     ax.set_aspect("equal")
     plt.tight_layout()
     plt.savefig("test.pdf")

@@ -13,7 +13,7 @@ struct Vertex2D {
 struct VoronoiFace2D {
     area: f64,
     midpoint: Vertex2D,
-    adjacent_cells: [i32; 3]
+    adjacent_cells: [i32; 2]
 }
 
 
