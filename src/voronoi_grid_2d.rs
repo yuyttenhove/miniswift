@@ -1,4 +1,5 @@
 use crate::delaunay_triangulation_2d::DelaunayTriangulation2D;
+use std::fs;
 
 /// A simple point in 2D space
 #[derive(Debug, Default)]
@@ -36,5 +37,29 @@ pub struct VoronoiGrid2D {
 impl VoronoiGrid2D {
     pub fn from_delaunay_triangulation(triangulation: &DelaunayTriangulation2D) -> VoronoiGrid2D {
         VoronoiGrid2D::default()
+    }
+
+    pub fn to_str(&self) -> String {
+        let mut result = String::from("# Vertices #\n");
+        for (i, v) in self.vertices.iter().enumerate() {
+            result += &format!("{}\t({}, {})\n", i, v.x, v.y);
+        }
+
+        result += "\n# cells #\n";
+        for (i, cell) in self.cells.iter().enumerate() {
+            result += &format!("{}\t(", i);
+            for (i, vertex_idx) in cell.vertices.iter().enumerate(){
+                result += &format!("{}", vertex_idx);
+                if i < cell.vertices.len() - 1 {
+                    result += ", "
+                }
+            }
+            result += ")\n";
+        }
+        result
+    }
+
+    pub fn to_file(&self, filename: &str) {
+        fs::write(filename, self.to_str()).expect("Unable to write to file!");
     }
 }

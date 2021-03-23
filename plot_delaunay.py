@@ -13,7 +13,7 @@ def plot_tesselation(vertices, triangles):
     ax.set_ylim([0, 1])
     ax.set_aspect("equal")
     plt.tight_layout()
-    plt.savefig("test.pdf")
+    plt.savefig("delaunay.pdf")
 
 
 def read_file(fname: Path):
@@ -44,7 +44,7 @@ def read_file(fname: Path):
 
 def main():
     base_path = Path(__file__).parent
-    fname = base_path / "test.txt"
+    fname = base_path / "delaunay.txt"
     vertices, triangles = read_file(fname)
 
     plot_tesselation(vertices, triangles)

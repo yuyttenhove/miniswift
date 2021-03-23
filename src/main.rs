@@ -17,5 +17,6 @@ fn main() {
     }
     let g = VoronoiGrid2D::from_delaunay_triangulation(&d);
     println!("{:?}", g);
-    d.to_file("test.txt");
+    d.to_file("delaunay.txt");
+    g.to_file("voronoi.txt")
 }
