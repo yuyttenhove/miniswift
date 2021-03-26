@@ -10,7 +10,7 @@ fn main() {
     let domain = SimulationDomain2D::new([0., 0.], [1., 1.]);
     let mut d = DelaunayTriangulation2D::new(domain, 10, 10);
     println!("{:?}", d);
-    for _ in 0..100 {
+    for _ in 0..50 {
         d.insert_point(rand::random::<f64>(), rand::random::<f64>());
     }
 

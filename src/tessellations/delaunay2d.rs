@@ -9,8 +9,8 @@ use std::fs;
 pub(super) struct DelaunayVertex2D {
     x: f64,
     y: f64,
-    triangle: i32,
-    index_in_triangle: i8
+    pub(super) triangle: i32,
+    pub(super) index_in_triangle: i8
 }
 
 impl Default for DelaunayVertex2D {
@@ -29,9 +29,9 @@ impl DelaunayVertex2D {
 
 #[derive(Debug)]
 pub(super) struct DelaunayTriangle2D {
-    vertices: [i32; 3],
-    neighbours: [i32; 3],
-    index_in_neighbours: [i8; 3]
+    pub(super) vertices: [i32; 3],
+    pub(super) neighbours: [i32; 3],
+    pub(super) index_in_neighbours: [i8; 3]
 }
 
 impl Default for DelaunayTriangle2D {

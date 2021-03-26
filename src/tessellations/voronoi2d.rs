@@ -38,7 +38,7 @@ impl VoronoiGrid2D {
     }
 
     pub fn from_delaunay_triangulation(triangulation: &DelaunayTriangulation2D) -> VoronoiGrid2D {
-        let mut grid = VoronoiGrid2D::with_capacity(triangulation.vertices.len(),
+        let mut grid = VoronoiGrid2D::with_capacity(triangulation.vertices.len() - 3,
                                                     triangulation.triangles.len() - 3);
         // for each triangle of triangulation add the circumcenter to vertices (skip dummy triangles)
         for triangle in triangulation.triangles[3..].iter() {
@@ -48,8 +48,32 @@ impl VoronoiGrid2D {
         // TODO: for each vertex of triangulation: find a triangle containing that vertex
         // TODO: loop around the vertex by jumping to neighbouring triangles, construct the
         // TODO: corresponding faces and build the area and centroid of the cell
-        for (i, generator) in triangulation.vertices.iter().enumerate() {
+        for (i, generator) in triangulation.vertices[3..].iter().enumerate() {
+            let start_triangle_idx_in_d = generator.triangle;
+            let mut current_triangle_idx_in_d = start_triangle_idx_in_d;
+            let mut idx_in_current_triangle = generator.index_in_triangle;
+            let mut current_cell = VoronoiCell2D::default();
 
+            let mut previous_triangle_idx_in_d = -1;
+            let mut n_neighbours_processed = 0;
+
+            while previous_triangle_idx_in_d != start_triangle_idx_in_d
+                    || n_neighbours_processed < 2 {
+                let current_triangle = &triangulation.triangles[current_triangle_idx_in_d as usize];
+                assert_eq!(i as i32 + 3, current_triangle.vertices[idx_in_current_triangle as usize]);
+
+                let next_triangle_idx_in_current_triangle = ((idx_in_current_triangle + 1) % 3) as usize;
+                let next_triangle_idx_in_d = current_triangle.neighbours[next_triangle_idx_in_current_triangle];
+                let current_triangle_idx_in_next_triangle = current_triangle.index_in_neighbours[next_triangle_idx_in_current_triangle];
+                current_cell.vertices.push(current_triangle_idx_in_d - 3);
+
+                previous_triangle_idx_in_d = current_triangle_idx_in_d;
+                current_triangle_idx_in_d = next_triangle_idx_in_d;
+                idx_in_current_triangle = (current_triangle_idx_in_next_triangle + 1) % 3;
+                n_neighbours_processed += 1;
+            }
+
+            grid.cells.push(current_cell);
         }
 
         // TODO divide area weighted sum of centroids by total area of cell -> centroid of cell
@@ -62,7 +86,7 @@ impl VoronoiGrid2D {
             result += &format!("{}\t({}, {})\n", i, v.x(), v.y());
         }
 
-        result += "\n# cells #\n";
+        result += "\n# Cells #\n";
         for (i, cell) in self.cells.iter().enumerate() {
             result += &format!("{}\t(", i);
             for (i, vertex_idx) in cell.vertices.iter().enumerate(){
