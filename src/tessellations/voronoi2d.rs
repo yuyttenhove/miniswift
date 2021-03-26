@@ -72,12 +72,13 @@ impl VoronoiGrid2D {
 
                 // TODO create faces between cells
 
-                // TODO update area of cell
+                // Update area of cell
                 let current_triangle_area = current_triangle.area(triangulation);
                 debug_assert!(current_triangle_area >= 0.);
                 current_cell.volume += current_triangle_area;
 
-                // TODO update area weighted cell centroid sum
+                // Update area weighted cell centroid sum
+                // TODO bug in centroid calculation??
                 current_cell.centroid += current_triangle_area * current_triangle.centroid(triangulation);
 
                 previous_triangle_idx_in_d = current_triangle_idx_in_d;
@@ -85,7 +86,7 @@ impl VoronoiGrid2D {
                 idx_in_current_triangle = (current_triangle_idx_in_next_triangle + 1) % 3;
                 n_neighbours_processed += 1;
             }
-            // TODO divide area weighted sum of centroids by total area of cell -> centroid of cell
+            // Divide area weighted sum of centroids by total area of cell -> centroid of cell
             current_cell.centroid /= current_cell.volume;
             grid.cells.push(current_cell);
         }
