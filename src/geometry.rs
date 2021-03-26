@@ -55,7 +55,7 @@ pub fn circumcenter_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> 
 
 
 pub fn oriented_volume_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> f64 {
-    ((ax - cx) * (by - ay) - (ax - bx) * (cy - ay)) / 2.
+    (ax*by + bx*cy + cx*ay - bx*ay - cx*by - ax*cy) / 2.
 }
 
 
