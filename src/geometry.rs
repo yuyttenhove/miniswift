@@ -80,3 +80,7 @@ pub fn circumcenter_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> 
 
     Vertex2D{x: s3x+ax, y: s3y+ay}
 }
+
+pub fn circumcenter_2d_test(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> Vertex2D {
+    Vertex2D{x: (ax + bx + cx) / 3., y: (ay + by + cy) / 3.}
+}
