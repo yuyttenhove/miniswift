@@ -1,5 +1,5 @@
 use crate::simulation_domain_2d::SimulationDomain2D;
-use crate::geometry::{orient_2d, in_circle_2d, circumcenter_2d_test, Vertex2D};
+use crate::geometry::{orient_2d, in_circle_2d, circumcenter_2d, Vertex2D};
 use crate::utils::random_choose;
 use std::collections::VecDeque;
 use std::fs;
@@ -324,7 +324,7 @@ impl DelaunayTriangulation2D {
     }
 
     pub(super) fn triangle_circumcenter(&self, triangle: &DelaunayTriangle2D) -> Vertex2D{
-        circumcenter_2d_test(
+        circumcenter_2d(
             self.vertices[triangle.vertices[0] as usize].x,
             self.vertices[triangle.vertices[0] as usize].y,
             self.vertices[triangle.vertices[1] as usize].x,

@@ -13,10 +13,6 @@ impl Default for Vertex2D {
 }
 
 impl Vertex2D {
-    pub fn new(x: f64, y: f64) -> Vertex2D {
-        Vertex2D{x, y}
-    }
-
     pub fn x(&self) -> f64 {
         self.x
     }
@@ -69,18 +65,14 @@ pub fn in_circle_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64, dx: f6
 
 
 pub fn circumcenter_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> Vertex2D {
-    let s1x = bx - ax;
-    let s1y = by - ay;
-    let s2x = cx - ax;
-    let s2y = cy - ay;
+    let bxn = bx - ax;
+    let byn = by - ay;
+    let cxn = cx - ax;
+    let cyn = cy - ay;
 
-    let tmp = 2.*(s1x*s2x - s1y*s2y);
-    let s3x = (s2y*(s1x*s1x + s1y*s1y) - s1y*(s2x*s2x + s2y*s2y)) / tmp;
-    let s3y = (s1x*(s2x*s2x + s2y*s2y) - s2x*(s1x*s1x + s1y*s1y)) / tmp;
+    let tmp = 2.*(bxn * cyn - byn * cxn);
+    let s3x = (cyn *(bxn * bxn + byn * byn) - byn *(cxn * cxn + cyn * cyn)) / tmp;
+    let s3y = (bxn *(cxn * cxn + cyn * cyn) - cxn *(bxn * bxn + byn * byn)) / tmp;
 
     Vertex2D{x: s3x+ax, y: s3y+ay}
-}
-
-pub fn circumcenter_2d_test(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> Vertex2D {
-    Vertex2D{x: (ax + bx + cx) / 3., y: (ay + by + cy) / 3.}
 }
