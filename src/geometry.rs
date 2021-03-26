@@ -1,3 +1,32 @@
+
+/// A simple point in 2D space
+#[derive(Debug)]
+pub struct Vertex2D {
+    x: f64,
+    y: f64
+}
+
+impl Default for Vertex2D {
+    fn default() -> Vertex2D {
+        Vertex2D{x: std::f64::NAN, y: std::f64::NAN}
+    }
+}
+
+impl Vertex2D {
+    pub fn new(x: f64, y: f64) -> Vertex2D {
+        Vertex2D{x, y}
+    }
+
+    pub fn x(&self) -> f64 {
+        self.x
+    }
+
+    pub fn y(&self) -> f64 {
+        self.y
+    }
+}
+
+
 /// Returns a positive value when the triangle formed by (ax, ay), (bx, by) and (cx, cy) is
 /// positively oriented.
 pub fn orient_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> f64 {
@@ -36,4 +65,18 @@ pub fn in_circle_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64, dx: f6
     result += s3x * (s1y * tmp2 - s2y*tmp1);
 
     result
+}
+
+
+pub fn circumcenter_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> Vertex2D {
+    let s1x = bx - ax;
+    let s1y = by - ay;
+    let s2x = cx - ax;
+    let s2y = cy - ay;
+
+    let tmp = 2.*(s1x*s2x - s1y*s2y);
+    let s3x = (s2y*(s1x*s1x + s1y*s1y) - s1y*(s2x*s2x + s2y*s2y)) / tmp;
+    let s3y = (s1x*(s2x*s2x + s2y*s2y) - s2x*(s1x*s1x + s1y*s1y)) / tmp;
+
+    Vertex2D{x: s3x+ax, y: s3y+ay}
 }

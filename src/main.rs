@@ -1,11 +1,10 @@
-mod delaunay_triangulation_2d;
 mod simulation_domain_2d;
 mod geometry;
-mod voronoi_grid_2d;
+mod tessellations;
+mod utils;
 
-use delaunay_triangulation_2d::{DelaunayTriangulation2D};
+use tessellations::{DelaunayTriangulation2D, VoronoiGrid2D};
 use simulation_domain_2d::SimulationDomain2D;
-use voronoi_grid_2d::VoronoiGrid2D;
 
 fn main() {
     let domain = SimulationDomain2D::new([0., 0.], [1., 1.]);

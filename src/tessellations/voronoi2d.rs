@@ -1,12 +1,6 @@
-use crate::delaunay_triangulation_2d::DelaunayTriangulation2D;
+use crate::tessellations::delaunay2d::DelaunayTriangulation2D;
+use crate::geometry::{Vertex2D};
 use std::fs;
-
-/// A simple point in 2D space
-#[derive(Debug, Default)]
-struct Vertex2D {
-    x: f64,
-    y: f64
-}
 
 
 /// A face (line) between two cells in a voronoi grid
@@ -35,14 +29,37 @@ pub struct VoronoiGrid2D {
 }
 
 impl VoronoiGrid2D {
+    pub fn with_capacity(n_generators: usize, n_triangles: usize) -> VoronoiGrid2D {
+        VoronoiGrid2D {
+            vertices: Vec::with_capacity(n_triangles),
+            faces: Vec::with_capacity(2 * n_triangles),
+            cells: Vec::with_capacity(n_generators)
+        }
+    }
+
     pub fn from_delaunay_triangulation(triangulation: &DelaunayTriangulation2D) -> VoronoiGrid2D {
-        VoronoiGrid2D::default()
+        let mut grid = VoronoiGrid2D::with_capacity(triangulation.vertices.len(),
+                                                    triangulation.triangles.len() - 3);
+        // for each triangle of triangulation add the circumcenter to vertices (skip dummy triangles)
+        for triangle in triangulation.triangles[3..].iter() {
+            grid.vertices.push(triangulation.triangle_circumcenter(triangle));
+        }
+
+        // TODO: for each vertex of triangulation: find a triangle containing that vertex
+        // TODO: loop around the vertex by jumping to neighbouring triangles, construct the
+        // TODO: corresponding faces and build the area and centroid of the cell
+        for (i, generator) in triangulation.vertices.iter().enumerate() {
+
+        }
+
+        // TODO divide area weighted sum of centroids by total area of cell -> centroid of cell
+        grid
     }
 
     pub fn to_str(&self) -> String {
         let mut result = String::from("# Vertices #\n");
         for (i, v) in self.vertices.iter().enumerate() {
-            result += &format!("{}\t({}, {})\n", i, v.x, v.y);
+            result += &format!("{}\t({}, {})\n", i, v.x(), v.y());
         }
 
         result += "\n# cells #\n";
