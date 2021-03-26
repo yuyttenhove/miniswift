@@ -1,5 +1,6 @@
 use crate::simulation_domain_2d::SimulationDomain2D;
-use crate::geometry::{orient_2d, in_circle_2d, circumcenter_2d};
+use crate::geometry::{orient_2d, in_circle_2d, circumcenter_2d, centroid_2d, oriented_volume_2d};
+use super::Vertex2D;
 use crate::utils::random_choose;
 use std::collections::VecDeque;
 use std::fs;
@@ -53,6 +54,41 @@ impl DelaunayTriangle2D {
     fn update_neighbour(&mut self, n: i32, idx_in_n: i8, i: i8) {
         self.neighbours[i as usize] = n;
         self.index_in_neighbours[i as usize] = idx_in_n;
+    }
+
+    pub(super) fn circumcenter(&self, triangulation: &DelaunayTriangulation2D) -> Vertex2D {
+        let (x, y) = circumcenter_2d(
+            triangulation.vertices[self.vertices[0] as usize].x,
+            triangulation.vertices[self.vertices[0] as usize].y,
+            triangulation.vertices[self.vertices[1] as usize].x,
+            triangulation.vertices[self.vertices[1] as usize].y,
+            triangulation.vertices[self.vertices[2] as usize].x,
+            triangulation.vertices[self.vertices[2] as usize].y
+        );
+        Vertex2D{x, y}
+    }
+
+    pub(super) fn centroid(&self, triangulation: &DelaunayTriangulation2D) -> Vertex2D {
+        let (x, y) = centroid_2d(
+            triangulation.vertices[self.vertices[0] as usize].x,
+            triangulation.vertices[self.vertices[0] as usize].y,
+            triangulation.vertices[self.vertices[1] as usize].x,
+            triangulation.vertices[self.vertices[1] as usize].y,
+            triangulation.vertices[self.vertices[2] as usize].x,
+            triangulation.vertices[self.vertices[2] as usize].y
+        );
+        Vertex2D{x, y}
+    }
+
+    pub(super) fn area(&self, triangulation: &DelaunayTriangulation2D) -> f64 {
+        oriented_volume_2d(
+            triangulation.vertices[self.vertices[0] as usize].x,
+            triangulation.vertices[self.vertices[0] as usize].y,
+            triangulation.vertices[self.vertices[1] as usize].x,
+            triangulation.vertices[self.vertices[1] as usize].y,
+            triangulation.vertices[self.vertices[2] as usize].x,
+            triangulation.vertices[self.vertices[2] as usize].y
+        )
     }
 }
 
@@ -321,17 +357,6 @@ impl DelaunayTriangulation2D {
 
         // update current_triangle
         self.current_triangle_idx = t1;
-    }
-
-    pub(super) fn triangle_circumcenter(&self, triangle: &DelaunayTriangle2D) -> (f64, f64){
-        circumcenter_2d(
-            self.vertices[triangle.vertices[0] as usize].x,
-            self.vertices[triangle.vertices[0] as usize].y,
-            self.vertices[triangle.vertices[1] as usize].x,
-            self.vertices[triangle.vertices[1] as usize].y,
-            self.vertices[triangle.vertices[2] as usize].x,
-            self.vertices[triangle.vertices[2] as usize].y
-        )
     }
 
     fn consistency_check(&self) {

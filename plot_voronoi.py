@@ -7,8 +7,23 @@ import pandas as pd
 import numpy as np
 
 
-def plot_tesselation(vertices, cells):
+def clean_lines(lines):
+    return [l for l in lines.split("\n") if len(l) > 0]
+
+
+def read_points_from_lines(lines):
+    df = pd.DataFrame(index=range(len(lines)), columns=["x", "y"], dtype=float)
+    for line in lines:
+        res = parse("{}\t({}, {})", line)
+        i = int(res[0])
+        df.loc[i, "x"] = float(res[1])
+        df.loc[i, "y"] = float(res[2])
+    return df
+
+
+def plot_tesselation(vertices, cells, centroids):
     ax = sns.scatterplot(data=vertices, x="x", y="y", s=8, color="blue")
+    ax = sns.scatterplot(data=centroids, x="x", y="y", s=8, color="red", ax=ax, marker="P")
     cells_xy_list = [vertices.values[cell_idx, :] for cell_idx in cells]
     patches = [plt.Polygon(xy, closed=False, edgecolor="blue", facecolor="none", linewidth=.5) for xy in cells_xy_list]
     ax.add_collection(PatchCollection(patches, match_original=True))
@@ -24,15 +39,13 @@ def read_file(fname: Path):
         lines = file.read()
     lines = lines.split("# Vertices #")[-1]
     vertex_lines, cell_lines = lines.split("# Cells #")
-    vertex_lines = [l for l in vertex_lines.split("\n") if len(l) > 0]
-    cell_lines = [l for l in cell_lines.split("\n") if len(l) > 0]
+    cell_lines, centroid_lines = cell_lines.split("# Centroids #")
+    vertex_lines = clean_lines(vertex_lines)
+    cell_lines = clean_lines(cell_lines)
+    centroid_lines = clean_lines(centroid_lines)
 
-    vertex_df = pd.DataFrame(index=range(len(vertex_lines)), columns=["x", "y"], dtype=float)
-    for vertex_line in vertex_lines:
-        res = parse("{}\t({}, {})", vertex_line)
-        i = int(res[0])
-        vertex_df.loc[i, "x"] = float(res[1])
-        vertex_df.loc[i, "y"] = float(res[2])
+    vertex_df = read_points_from_lines(vertex_lines)
+    centroid_df = read_points_from_lines(centroid_lines)
 
     cell_list = []
     for triangle_line in cell_lines:
@@ -40,15 +53,15 @@ def read_file(fname: Path):
         vertices = np.array([int(i) for i in res[1].split(", ")])
         cell_list.append(vertices)
 
-    return vertex_df, cell_list
+    return vertex_df, cell_list, centroid_df
 
 
 def main():
     base_path = Path(__file__).parent
     fname = base_path / "voronoi.txt"
-    vertices, cells = read_file(fname)
+    vertices, cells, centroid_df = read_file(fname)
 
-    plot_tesselation(vertices, cells)
+    plot_tesselation(vertices, cells, centroid_df)
 
 
 
