@@ -8,8 +8,8 @@ from plot_voronoi import read_file as read_voronoi_file
 
 
 def plot_tesselation(delaunay_vertices, delaunay_triangles, voronoi_vertices, voronoi_cells):
-    ax = sns.scatterplot(data=delaunay_vertices, x="x", y="y", s=8, color="black")
-    ax.triplot(delaunay_vertices["x"], delaunay_vertices["y"], triangles=delaunay_triangles, lw=.5, color="black")
+    ax = sns.scatterplot(data=delaunay_vertices, x="x", y="y", s=8, color="grey", alpha=.75)
+    ax.triplot(delaunay_vertices["x"], delaunay_vertices["y"], triangles=delaunay_triangles, lw=.5, color="grey", alpha=.5, linestyle="--")
 
     ax = sns.scatterplot(data=voronoi_vertices, x="x", y="y", s=8, color="blue")
     cells_xy_list = [voronoi_vertices.values[cell_idx, :] for cell_idx in voronoi_cells]
@@ -29,7 +29,6 @@ def main():
     voronoi_vertices, voronoi_cells = read_voronoi_file(base_path / "voronoi.txt")
 
     plot_tesselation(delaunay_vertices, delaunay_triangles, voronoi_vertices, voronoi_cells)
-
 
 
 if __name__ == "__main__":
