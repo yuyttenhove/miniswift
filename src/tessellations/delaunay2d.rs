@@ -6,7 +6,7 @@ use std::fs;
 
 
 #[derive(Debug)]
-pub struct DelaunayVertex2D {
+pub(super) struct DelaunayVertex2D {
     x: f64,
     y: f64,
     triangle: i32,
@@ -28,7 +28,7 @@ impl DelaunayVertex2D {
 
 
 #[derive(Debug)]
-pub struct DelaunayTriangle2D {
+pub(super) struct DelaunayTriangle2D {
     vertices: [i32; 3],
     neighbours: [i32; 3],
     index_in_neighbours: [i8; 3]
