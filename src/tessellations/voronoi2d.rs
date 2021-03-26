@@ -1,6 +1,19 @@
 use crate::tessellations::delaunay2d::DelaunayTriangulation2D;
-use crate::geometry::{Vertex2D};
 use std::fs;
+
+
+/// A simple point in 2D space
+#[derive(Debug)]
+struct Vertex2D {
+    x: f64,
+    y: f64
+}
+
+impl Default for Vertex2D {
+    fn default() -> Vertex2D {
+        Vertex2D{x: std::f64::NAN, y: std::f64::NAN}
+    }
+}
 
 
 /// A face (line) between two cells in a voronoi grid
@@ -42,7 +55,8 @@ impl VoronoiGrid2D {
                                                     triangulation.triangles.len() - 3);
         // for each triangle of triangulation add the circumcenter to vertices (skip dummy triangles)
         for triangle in triangulation.triangles[3..].iter() {
-            grid.vertices.push(triangulation.triangle_circumcenter(triangle));
+            let (x, y) = triangulation.triangle_circumcenter(triangle);
+            grid.vertices.push(Vertex2D{x, y});
         }
 
         // TODO: for each vertex of triangulation: find a triangle containing that vertex
@@ -83,7 +97,7 @@ impl VoronoiGrid2D {
     pub fn to_str(&self) -> String {
         let mut result = String::from("# Vertices #\n");
         for (i, v) in self.vertices.iter().enumerate() {
-            result += &format!("{}\t({}, {})\n", i, v.x(), v.y());
+            result += &format!("{}\t({}, {})\n", i, v.x, v.y);
         }
 
         result += "\n# Cells #\n";
