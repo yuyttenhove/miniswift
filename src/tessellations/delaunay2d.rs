@@ -1,5 +1,5 @@
 use crate::simulation_domain_2d::SimulationDomain2D;
-use crate::geometry::{orient_2d, in_circle_2d, circumcenter_2d, centroid_2d, oriented_volume_2d};
+use crate::tessellations::geometry::{orient_2d, in_circle_2d, circumcenter_2d};
 use super::Vertex2D;
 use crate::utils::random_choose;
 use std::collections::VecDeque;
@@ -8,8 +8,8 @@ use std::fs;
 
 #[derive(Debug)]
 pub(super) struct DelaunayVertex2D {
-    x: f64,
-    y: f64,
+    pub(super)x: f64,
+    pub(super)y: f64,
     pub(super) triangle: i32,
     pub(super) index_in_triangle: i8
 }
@@ -57,31 +57,7 @@ impl DelaunayTriangle2D {
     }
 
     pub(super) fn circumcenter(&self, triangulation: &DelaunayTriangulation2D) -> Vertex2D {
-        let (x, y) = circumcenter_2d(
-            triangulation.vertices[self.vertices[0] as usize].x,
-            triangulation.vertices[self.vertices[0] as usize].y,
-            triangulation.vertices[self.vertices[1] as usize].x,
-            triangulation.vertices[self.vertices[1] as usize].y,
-            triangulation.vertices[self.vertices[2] as usize].x,
-            triangulation.vertices[self.vertices[2] as usize].y
-        );
-        Vertex2D{x, y}
-    }
-
-    pub(super) fn centroid(&self, triangulation: &DelaunayTriangulation2D) -> Vertex2D {
-        let (x, y) = centroid_2d(
-            triangulation.vertices[self.vertices[0] as usize].x,
-            triangulation.vertices[self.vertices[0] as usize].y,
-            triangulation.vertices[self.vertices[1] as usize].x,
-            triangulation.vertices[self.vertices[1] as usize].y,
-            triangulation.vertices[self.vertices[2] as usize].x,
-            triangulation.vertices[self.vertices[2] as usize].y
-        );
-        Vertex2D{x, y}
-    }
-
-    pub(super) fn area(&self, triangulation: &DelaunayTriangulation2D) -> f64 {
-        oriented_volume_2d(
+        circumcenter_2d(
             triangulation.vertices[self.vertices[0] as usize].x,
             triangulation.vertices[self.vertices[0] as usize].y,
             triangulation.vertices[self.vertices[1] as usize].x,

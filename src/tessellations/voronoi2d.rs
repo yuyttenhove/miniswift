@@ -1,5 +1,5 @@
 use super::delaunay2d::DelaunayTriangulation2D;
-use super::Vertex2D;
+use super::{Vertex2D, Triangle2D};
 use std::fs;
 
 
@@ -49,6 +49,7 @@ impl VoronoiGrid2D {
         // Loop around the vertex by jumping to neighbouring triangles, construct the cell
         // corresponding to that generator
         for (i, generator) in triangulation.vertices[3..].iter().enumerate() {
+            let current_voronoi_cell_idx = i as i32;
             let start_triangle_idx_in_d = generator.triangle;
             let mut current_triangle_idx_in_d = start_triangle_idx_in_d;
             let mut idx_in_current_triangle = generator.index_in_triangle;
@@ -56,6 +57,7 @@ impl VoronoiGrid2D {
                 centroid: Vertex2D{x: 0., y: 0.},
                 ..VoronoiCell2D::default()
             };
+            let generator_as_vertex2d = Vertex2D{x: generator.x, y: generator.y};
 
             let mut previous_triangle_idx_in_d = -1;
             let mut n_neighbours_processed = 0;
@@ -63,23 +65,38 @@ impl VoronoiGrid2D {
             while previous_triangle_idx_in_d != start_triangle_idx_in_d
                     || n_neighbours_processed < 2 {
                 let current_triangle = &triangulation.triangles[current_triangle_idx_in_d as usize];
-                debug_assert_eq!(i as i32 + 3, current_triangle.vertices[idx_in_current_triangle as usize]);
+                assert_eq!(current_voronoi_cell_idx + 3, current_triangle.vertices[idx_in_current_triangle as usize]);
 
                 let next_triangle_idx_in_current_triangle = ((idx_in_current_triangle + 1) % 3) as usize;
                 let next_triangle_idx_in_d = current_triangle.neighbours[next_triangle_idx_in_current_triangle];
                 let current_triangle_idx_in_next_triangle = current_triangle.index_in_neighbours[next_triangle_idx_in_current_triangle];
-                current_cell.vertices.push(current_triangle_idx_in_d - 3);
 
-                // TODO create faces between cells
+                let current_voronoi_vertex_idx = current_triangle_idx_in_d - 3;
+                let next_voronoi_vertex_idx: i32 = next_triangle_idx_in_d - 3;
+                current_cell.vertices.push(current_voronoi_vertex_idx);
 
-                // Update area of cell
-                let current_triangle_area = current_triangle.area(triangulation);
-                debug_assert!(current_triangle_area >= 0.);
-                current_cell.volume += current_triangle_area;
+                // create faces between cells
+                let neighbouring_generator_idx_in_d = current_triangle.vertices[((idx_in_current_triangle + 2) % 3) as usize];
+                let neighbouring_voronoi_cell_idx = neighbouring_generator_idx_in_d - 3;
+                current_cell.faces.push(
+                    grid.get_or_create_face(
+                        current_voronoi_vertex_idx,
+                        next_voronoi_vertex_idx,
+                        current_voronoi_cell_idx,
+                        neighbouring_voronoi_cell_idx
+                    )
+                );
 
-                // Update area weighted cell centroid sum
-                // TODO bug in centroid calculation??
-                current_cell.centroid += current_triangle_area * current_triangle.centroid(triangulation);
+                // Update area and area weighted centroid sum of cell
+                let current_wedge = Triangle2D::new(
+                    generator_as_vertex2d,
+                    grid.vertices[current_voronoi_vertex_idx as usize],
+                    grid.vertices[next_voronoi_vertex_idx as usize]
+                );
+                let current_wedge_area = current_wedge.area();
+                assert!(current_wedge_area >= 0.);
+                current_cell.volume += current_wedge_area;
+                current_cell.centroid += current_wedge_area * current_wedge.centroid();
 
                 previous_triangle_idx_in_d = current_triangle_idx_in_d;
                 current_triangle_idx_in_d = next_triangle_idx_in_d;
@@ -91,6 +108,30 @@ impl VoronoiGrid2D {
             grid.cells.push(current_cell);
         }
         grid
+    }
+
+    fn get_or_create_face(&mut self, vertex_from_idx: i32, vertex_to_idx: i32, cell_in_idx: i32, cell_out_idx: i32) -> i32 {
+        assert_ne!(cell_in_idx, cell_out_idx, "Trying to add face between a cell and itself!");
+        assert_ne!(vertex_from_idx, vertex_to_idx, "Trying to add a face from a vertex to itself!");
+        let face_idx: i32;
+        if cell_out_idx < cell_in_idx && cell_out_idx > 2 {
+            let cell_out = &self.cells[cell_out_idx as usize];
+            let face_idx_in_cell_out = cell_out.vertices.iter().position(|&v_idx| v_idx == vertex_to_idx).unwrap();
+            face_idx = cell_out.faces[face_idx_in_cell_out];
+            assert_eq!(&self.faces[face_idx as usize].adjacent_cells[1], &cell_in_idx,
+                       "Face has wrong adjacent cells!");
+        } else {
+            // create new face and return index
+            face_idx = self.faces.len() as i32;
+            self.faces.push(
+                VoronoiFace2D{
+                    area: (self.vertices[vertex_to_idx as usize] - self.vertices[vertex_from_idx as usize]).norm(),
+                    midpoint: (self.vertices[vertex_to_idx as usize] + self.vertices[vertex_from_idx as usize]) / 2.,
+                    adjacent_cells: [cell_in_idx, cell_out_idx]
+                }
+            );
+        }
+        face_idx
     }
 
     pub fn to_str(&self) -> String {
