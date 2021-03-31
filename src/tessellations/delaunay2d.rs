@@ -82,18 +82,20 @@ pub struct DelaunayTriangulation2D {
 }
 
 impl DelaunayTriangulation2D {
-    pub fn new(domain: SimulationDomain2D, vertex_size: usize, triangle_size: usize) -> DelaunayTriangulation2D {
+    pub fn new(domain: &SimulationDomain2D, vertex_size: usize, triangle_size: usize) -> DelaunayTriangulation2D {
         let mut triangulation = DelaunayTriangulation2D{
-            vertices: Vec::with_capacity(vertex_size),
-            triangles: Vec::with_capacity(triangle_size),
+            vertices: Vec::with_capacity(vertex_size + 3),
+            triangles: Vec::with_capacity(triangle_size * 2),
             ..DelaunayTriangulation2D::default()
         };
 
         /* Setup the domain and side of the triangulation box large enough so that any
         ghost particles certainly fall into the domain.
          */
-        triangulation.anchor = [domain.anchor()[0] - domain.sides()[0],
-            domain.anchor()[1] - domain.sides()[1]];
+        triangulation.anchor = [
+            domain.anchor()[0] - domain.sides()[0],
+            domain.anchor()[1] - domain.sides()[1]
+        ];
         triangulation.side = 6. * f64::max(domain.sides()[0], domain.sides()[1]);
         triangulation.inverse_side = 1. / triangulation.side;
 
@@ -104,21 +106,34 @@ impl DelaunayTriangulation2D {
         let v2 = triangulation.new_vertex(triangulation.anchor[0],
                                           triangulation.anchor[1] + triangulation.side);
 
-        // Create first large triangle with 3 dummy triangles as neighbours
-        let dummy0 = triangulation.new_triangle(v1, v2, -1);
-        let dummy1 = triangulation.new_triangle(v2, v0, -1);
-        let dummy2 = triangulation.new_triangle(v0, v1, -1);
+        // Create first large triangle and 3 dummy triangles
+        let dummy0 = triangulation.new_triangle(v1, -1, v2);
+        let dummy1 = triangulation.new_triangle(v2, -1, v0);
+        let dummy2 = triangulation.new_triangle(v0, -1, v1);
         let first_triangle = triangulation.new_triangle(v0, v1, v2);
+        // set neighbour relations: first triangles has 3 dummies as neighbours and each dummy has
+        // the first triangle and the other two dummies as neighbours.
         triangulation.triangles[first_triangle as usize].update_neighbours(dummy0, dummy1, dummy2,
-                                                                           0, 1, 2);
-        triangulation.triangles[dummy0 as usize].update_neighbour(first_triangle, 0, 0);
-        triangulation.triangles[dummy1 as usize].update_neighbour(first_triangle, 1, 1);
-        triangulation.triangles[dummy2 as usize].update_neighbour(first_triangle, 2, 2);
+                                                                           1, 1, 1);
+        triangulation.triangles[dummy0 as usize].update_neighbours(dummy1, first_triangle, dummy2,
+                                                                   2, 0, 0);
+        triangulation.triangles[dummy1 as usize].update_neighbours(dummy2, first_triangle, dummy0,
+                                                                   2, 1, 0);
+        triangulation.triangles[dummy2 as usize].update_neighbours(dummy0, first_triangle, dummy1,
+                                                                   2, 2, 0);
 
         triangulation.consistency_check();
 
         triangulation.current_triangle_idx = first_triangle;
         triangulation
+    }
+
+    pub fn from_points(points: &Vec<Vertex2D>, simulation_domain: &SimulationDomain2D) -> DelaunayTriangulation2D {
+        let mut d = DelaunayTriangulation2D::new(simulation_domain, points.len(), points.len() * 2);
+        for vertex in points.iter() {
+            d.insert_point(vertex.x, vertex.y);
+        }
+        d
     }
 
     pub fn insert_point(&mut self, x: f64, y: f64) {
@@ -263,9 +278,7 @@ impl DelaunayTriangulation2D {
                 panic!("Error! This scenario should not be possible?")
             }
 
-            if current_triangle_idx < 3 {
-                panic!("Ended up with dummy triangle!");
-            }
+            assert!(current_triangle_idx > 2, "Ended up with dummy triangle!");
         }
         current_triangle_idx
     }

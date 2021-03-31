@@ -14,11 +14,11 @@ def plot_tesselation(delaunay_vertices, delaunay_triangles, voronoi_vertices, vo
     ax = sns.scatterplot(data=voronoi_vertices, x="x", y="y", s=8, color="blue", ax=ax)
     ax = sns.scatterplot(data=voronoi_centroids, x="x", y="y", s=8, color="red", ax=ax, marker="P")
     cells_xy_list = [voronoi_vertices.values[cell_idx, :] for cell_idx in voronoi_cells]
-    patches = [plt.Polygon(xy, closed=False, edgecolor="blue", facecolor="none", linewidth=.5) for xy in cells_xy_list]
+    patches = [plt.Polygon(xy, closed=True, edgecolor="blue", facecolor="none", linewidth=.5) for xy in cells_xy_list]
     ax.add_collection(PatchCollection(patches, match_original=True))
 
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
+    # ax.set_xlim([0, 1])
+    # ax.set_ylim([0, 1])
     ax.set_aspect("equal")
     plt.tight_layout()
     plt.savefig("both.pdf")

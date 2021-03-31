@@ -1,6 +1,8 @@
 use super::delaunay2d::DelaunayTriangulation2D;
 use super::{Vertex2D, Triangle2D};
 use std::fs;
+use std::iter::FromIterator;
+use crate::simulation_domain_2d::SimulationDomain2D;
 
 
 /// A face (line) between two cells in a voronoi grid
@@ -13,12 +15,23 @@ struct VoronoiFace2D {
 
 
 /// A cell from a voronoi grid in 2D
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct VoronoiCell2D {
     vertices: Vec<i32>,
     faces: Vec<i32>,
     centroid: Vertex2D,
     volume: f64
+}
+
+impl Default for VoronoiCell2D {
+    fn default() -> VoronoiCell2D {
+        VoronoiCell2D{
+            vertices: Vec::new(),
+            faces: Vec::new(),
+            centroid: Vertex2D{x: 0., y: 0.0},
+            volume: 0.
+        }
+    }
 }
 
 #[derive(Default, Debug)]
@@ -29,11 +42,11 @@ pub struct VoronoiGrid2D {
 }
 
 impl VoronoiGrid2D {
-    pub fn with_capacity(n_generators: usize, n_triangles: usize) -> VoronoiGrid2D {
+    pub fn with_capacity(n_cells: usize, n_vertices: usize) -> VoronoiGrid2D {
         VoronoiGrid2D {
-            vertices: Vec::with_capacity(n_triangles),
-            faces: Vec::with_capacity(2 * n_triangles),
-            cells: Vec::with_capacity(n_generators)
+            vertices: Vec::with_capacity(n_vertices),
+            faces: Vec::with_capacity(2 * n_vertices),
+            cells: Vec::with_capacity(n_cells)
         }
     }
 
@@ -53,16 +66,12 @@ impl VoronoiGrid2D {
             let start_triangle_idx_in_d = generator.triangle;
             let mut current_triangle_idx_in_d = start_triangle_idx_in_d;
             let mut idx_in_current_triangle = generator.index_in_triangle;
-            let mut current_cell = VoronoiCell2D{
-                centroid: Vertex2D{x: 0., y: 0.},
-                ..VoronoiCell2D::default()
-            };
+            let mut current_cell = VoronoiCell2D::default();
             let generator_as_vertex2d = Vertex2D{x: generator.x, y: generator.y};
 
-            let mut previous_triangle_idx_in_d = -1;
             let mut n_neighbours_processed = 0;
 
-            while previous_triangle_idx_in_d != start_triangle_idx_in_d
+            while current_triangle_idx_in_d != start_triangle_idx_in_d
                     || n_neighbours_processed < 2 {
                 let current_triangle = &triangulation.triangles[current_triangle_idx_in_d as usize];
                 assert_eq!(current_voronoi_cell_idx + 3, current_triangle.vertices[idx_in_current_triangle as usize]);
@@ -98,11 +107,12 @@ impl VoronoiGrid2D {
                 current_cell.volume += current_wedge_area;
                 current_cell.centroid += current_wedge_area * current_wedge.centroid();
 
-                previous_triangle_idx_in_d = current_triangle_idx_in_d;
                 current_triangle_idx_in_d = next_triangle_idx_in_d;
                 idx_in_current_triangle = (current_triangle_idx_in_next_triangle + 1) % 3;
                 n_neighbours_processed += 1;
             }
+            assert_eq!(current_triangle_idx_in_d, start_triangle_idx_in_d, "Not looped around!");
+            // current_cell.vertices.push(current_triangle_idx_in_d - 3);
             // Divide area weighted sum of centroids by total area of cell -> centroid of cell
             current_cell.centroid /= current_cell.volume;
             grid.cells.push(current_cell);
@@ -132,6 +142,48 @@ impl VoronoiGrid2D {
             );
         }
         face_idx
+    }
+
+    pub fn lloyd_relax(&self, move_threshold: f64, max_iter: usize) -> VoronoiGrid2D {
+        let mut generators = Vec::from_iter(self.cells.iter().map(|c| c.centroid));
+        // Setup fixed domain
+        let mut min_x = f64::INFINITY;
+        let mut max_x = f64::NEG_INFINITY;
+        let mut min_y = f64::INFINITY;
+        let mut max_y = f64::NEG_INFINITY;
+        for vertex in generators.iter() {
+            if vertex.x < min_x {min_x = vertex.x;}
+            if vertex.x > max_x {max_x = vertex.x;}
+            if vertex.y < min_y {min_y = vertex.y;}
+            if vertex.y > max_y {max_y = vertex.y;}
+        }
+        let simulation_domain = SimulationDomain2D::new(
+            [min_x, min_y],
+            [max_x - min_x, max_y - min_y]
+        );
+
+        let mut d = DelaunayTriangulation2D::from_points(&generators, &simulation_domain);
+        let mut v: VoronoiGrid2D = VoronoiGrid2D::from_delaunay_triangulation(&d);
+        let mut max_displacement = f64::NEG_INFINITY;
+        let mut displacement_threshold_satisfied = false;
+        let mut iter: usize = 0;
+
+        while iter < max_iter && !displacement_threshold_satisfied {
+            for (i, voronoi_cell) in v.cells.iter().enumerate() {
+                let centroid = voronoi_cell.centroid;
+                let generator = generators[i];
+                let displacement = (generator - centroid).norm();
+                if displacement > max_displacement {
+                    max_displacement = displacement
+                }
+            }
+            displacement_threshold_satisfied = max_displacement < move_threshold;
+            iter += 1;
+            generators = Vec::from_iter(v.cells.iter().map(|c| c.centroid));
+            d = DelaunayTriangulation2D::from_points(&generators, &simulation_domain);
+            v = VoronoiGrid2D::from_delaunay_triangulation(&d);
+        }
+        v
     }
 
     pub fn to_str(&self) -> String {

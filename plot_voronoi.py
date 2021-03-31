@@ -25,10 +25,10 @@ def plot_tesselation(vertices, cells, centroids):
     ax = sns.scatterplot(data=vertices, x="x", y="y", s=8, color="blue")
     ax = sns.scatterplot(data=centroids, x="x", y="y", s=8, color="red", ax=ax, marker="P")
     cells_xy_list = [vertices.values[cell_idx, :] for cell_idx in cells]
-    patches = [plt.Polygon(xy, closed=False, edgecolor="blue", facecolor="none", linewidth=.5) for xy in cells_xy_list]
+    patches = [plt.Polygon(xy, closed=True, edgecolor="blue", facecolor="none", linewidth=.5) for xy in cells_xy_list]
     ax.add_collection(PatchCollection(patches, match_original=True))
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
+    # ax.set_xlim([0, 1])
+    # ax.set_ylim([0, 1])
     ax.set_aspect("equal")
     plt.tight_layout()
     plt.savefig("voronoi.pdf")
