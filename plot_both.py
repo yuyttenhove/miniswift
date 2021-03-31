@@ -17,8 +17,8 @@ def plot_tesselation(delaunay_vertices, delaunay_triangles, voronoi_vertices, vo
     patches = [plt.Polygon(xy, closed=True, edgecolor="blue", facecolor="none", linewidth=.5) for xy in cells_xy_list]
     ax.add_collection(PatchCollection(patches, match_original=True))
 
-    # ax.set_xlim([0, 1])
-    # ax.set_ylim([0, 1])
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
     ax.set_aspect("equal")
     plt.tight_layout()
     plt.savefig("both.pdf")

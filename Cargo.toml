@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 rand = "0.8.0"
 rand_distr = "0.4.0"
+permutation = "0.2.5"
+ordered-float = "2.1.1"

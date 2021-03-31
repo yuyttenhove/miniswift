@@ -46,6 +46,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ordered-float"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "766f840da25490628d8e63e529cd21c014f6600c6b8517add12a6fa6167a6218"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "permutation"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9978962f8a4b158e97447a6d09d2d75e206d2994eff056c894019f362b27142"
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -105,6 +120,8 @@ dependencies = [
 name = "rust_voronoi"
 version = "0.1.0"
 dependencies = [
+ "ordered-float",
+ "permutation",
  "rand",
  "rand_distr",
 ]

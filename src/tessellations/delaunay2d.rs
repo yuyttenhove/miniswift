@@ -4,6 +4,7 @@ use super::Vertex2D;
 use crate::utils::random_choose;
 use std::collections::VecDeque;
 use std::fs;
+use permutation::Permutation;
 
 
 #[derive(Debug)]
@@ -75,14 +76,17 @@ pub struct DelaunayTriangulation2D {
     pub(super) triangles: Vec<DelaunayTriangle2D>,
     anchor: [f64; 2],
     side: f64,
+    domain: SimulationDomain2D,
     inverse_side: f64,
     current_triangle_idx: i32,
     current_vertex_idx: i32,
-    triangles_to_check: VecDeque<i32>
+    triangles_to_check: VecDeque<i32>,
+    is_periodic: bool,
+    n_vertices: usize
 }
 
 impl DelaunayTriangulation2D {
-    pub fn new(domain: &SimulationDomain2D, vertex_size: usize, triangle_size: usize) -> DelaunayTriangulation2D {
+    pub fn new(domain: SimulationDomain2D, vertex_size: usize, triangle_size: usize) -> DelaunayTriangulation2D {
         let mut triangulation = DelaunayTriangulation2D{
             vertices: Vec::with_capacity(vertex_size + 3),
             triangles: Vec::with_capacity(triangle_size * 2),
@@ -98,6 +102,7 @@ impl DelaunayTriangulation2D {
         ];
         triangulation.side = 6. * f64::max(domain.sides()[0], domain.sides()[1]);
         triangulation.inverse_side = 1. / triangulation.side;
+        triangulation.domain = domain;
 
         // Create vertices for the first triangle that encapsulates the entire domain
         let v0 = triangulation.new_vertex(triangulation.anchor[0], triangulation.anchor[1]);
@@ -128,15 +133,22 @@ impl DelaunayTriangulation2D {
         triangulation
     }
 
-    pub fn from_points(points: &Vec<Vertex2D>, simulation_domain: &SimulationDomain2D) -> DelaunayTriangulation2D {
-        let mut d = DelaunayTriangulation2D::new(simulation_domain, points.len(), points.len() * 2);
-        for vertex in points.iter() {
-            d.insert_point(vertex.x, vertex.y);
+    pub fn from_points(points_x: &Vec<f64>,
+                       points_y: &Vec<f64>,
+                       simulation_domain: SimulationDomain2D,
+                       make_periodic: bool) -> DelaunayTriangulation2D {
+        assert_eq!(points_x.len(), points_y.len(), "points_x and points_y must have the same length!");
+        let mut d = DelaunayTriangulation2D::new(simulation_domain, points_x.len(), points_y.len() * 2);
+        for (i, &x) in points_x.iter().enumerate() {
+            d.insert_point(x, points_y[i]);
+        }
+        if make_periodic {
+            d.make_periodic();
         }
         d
     }
 
-    pub fn insert_point(&mut self, x: f64, y: f64) {
+    fn insert_point(&mut self, x: f64, y: f64) {
         // add vertex
         self.new_vertex(x, y);
 
@@ -176,6 +188,115 @@ impl DelaunayTriangulation2D {
         self.fix_delaunayness();
 
         self.consistency_check();
+    }
+
+    fn make_periodic(&mut self) {
+        use ordered_float::OrderedFloat;
+        assert!(!self.is_periodic, "Delaunay triangulation is already periodic!");
+        self.n_vertices = self.vertices.len() - 3;
+        let arg_sort_x = permutation::sort_by_key(&self.vertices[3..],
+                                                  |v| OrderedFloat(v.x));
+        let arg_sort_y = permutation::sort_by_key(&self.vertices[3..],
+                                                  |v| OrderedFloat(v.y));
+        let arg_sort_xpy = permutation::sort_by_key(&self.vertices[3..],
+                                                  |v| OrderedFloat(v.x + v.y));
+        let arg_sort_xmy = permutation::sort_by_key(&self.vertices[3..],
+                                                  |v| OrderedFloat(v.x - v.y));
+
+        // initial value of search radius: twice average inter-particle distance for uniform distribution of particles
+        let search_radius = 2. * self.domain.sides()[0] / f64::sqrt(self.n_vertices as f64);
+        let old_search_radius = 0.;
+
+        self.add_ghost_particles(search_radius, old_search_radius, arg_sort_x, arg_sort_y, arg_sort_xpy, arg_sort_xmy);
+
+        // TODO update search radius and add more ghost particles until all particles search radii are smaller than search radius
+
+        self.is_periodic = true;
+    }
+
+    fn add_ghost_particles(&mut self, search_radius: f64, old_search_radius: f64,
+                           arg_sort_x: Permutation, arg_sort_y: Permutation,
+                           arg_sort_xpy: Permutation, arg_sort_xmy: Permutation, ) {
+        let sides = self.domain.sides();
+        // add ghost particles in positive x direction
+        let mut i: usize = 0;
+        let mut vertex = &self.vertices[arg_sort_x.apply_inv_idx(i) + 3];
+        let mut comp_value = vertex.x;
+        while old_search_radius <= comp_value && comp_value < search_radius
+            && i < self.n_vertices - 1 {
+            self.insert_point(vertex.x + sides[0], vertex.y);
+            i += 1;
+            vertex = &self.vertices[arg_sort_x.apply_inv_idx(i) + 3];
+        }
+        // add ghost particles in negative x direction
+        i = self.n_vertices - 1;
+        vertex = &self.vertices[arg_sort_x.apply_inv_idx(i) + 3];
+        comp_value = sides[0] - vertex.x;
+        while old_search_radius <= comp_value && comp_value < search_radius && i > 0 {
+            self.insert_point(vertex.x - sides[0], vertex.y);
+            i -= 1;
+            vertex = &self.vertices[arg_sort_x.apply_inv_idx(i) + 3];
+        }
+        // add ghost particles in positive y direction
+        i = 0;
+        vertex = &self.vertices[arg_sort_y.apply_inv_idx(i) + 3];
+        comp_value = vertex.y;
+        while old_search_radius <= comp_value && comp_value < search_radius
+            && i < self.n_vertices - 1 {
+            self.insert_point(vertex.x, vertex.y + sides[1]);
+            i += 1;
+            vertex = &self.vertices[arg_sort_y.apply_inv_idx(i) + 3];
+        }
+        // add ghost particles in negative y direction
+        i = self.n_vertices - 1;
+        vertex = &self.vertices[arg_sort_y.apply_inv_idx(i) + 3];
+        comp_value = sides[1] - vertex.y;
+        while old_search_radius <= comp_value && comp_value < search_radius && i > 0 {
+            self.insert_point(vertex.x, vertex.y - sides[1]);
+            i -= 1;
+            vertex = &self.vertices[arg_sort_y.apply_inv_idx(i) + 3];
+        }
+        // add ghost particles in positive xpy direction
+        i = 0;
+        vertex = &self.vertices[arg_sort_xpy.apply_inv_idx(i) + 3];
+        comp_value = vertex.x*vertex.x + vertex.y*vertex.y;
+        while old_search_radius*old_search_radius <= comp_value
+            && comp_value < search_radius*search_radius && i < self.n_vertices - 1 {
+            self.insert_point(vertex.x + sides[0], vertex.y + sides[1]);
+            i += 1;
+            vertex = &self.vertices[arg_sort_xpy.apply_inv_idx(i) + 3];
+        }
+        // add ghost particles in negative xpy direction
+        i = self.n_vertices - 1;
+        vertex = &self.vertices[arg_sort_xpy.apply_inv_idx(i) + 3];
+        comp_value = (sides[0] - vertex.x)*(sides[0] - vertex.x)
+            + (sides[1] - vertex.y)*(sides[1] - vertex.y);
+        while old_search_radius*old_search_radius <= comp_value
+            && comp_value < search_radius*search_radius && i > 0 {
+            self.insert_point(vertex.x - sides[0], vertex.y - sides[1]);
+            i -= 1;
+            vertex = &self.vertices[arg_sort_xpy.apply_inv_idx(i) + 3];
+        }
+        // add ghost particles in positive xmy direction
+        i = 0;
+        vertex = &self.vertices[arg_sort_xmy.apply_inv_idx(i) + 3];
+        comp_value = vertex.x*vertex.x + (sides[1] - vertex.y)*(sides[1] - vertex.y);
+        while old_search_radius*old_search_radius <= comp_value
+            && comp_value < search_radius*search_radius && i < self.n_vertices - 1 {
+            self.insert_point(vertex.x + sides[0], vertex.y - sides[1]);
+            i += 1;
+            vertex = &self.vertices[arg_sort_xmy.apply_inv_idx(i) + 3];
+        }
+        // add ghost particles in negative xmy direction
+        i = self.n_vertices - 1;
+        vertex = &self.vertices[arg_sort_xmy.apply_inv_idx(i) + 3];
+        comp_value = (sides[0] - vertex.x)*(sides[0] - vertex.x) + vertex.y*vertex.y;
+        while old_search_radius*old_search_radius <= comp_value
+            && comp_value < search_radius*search_radius && i > 0 {
+            self.insert_point(vertex.x - sides[0], vertex.y + sides[1]);
+            i -= 1;
+            vertex = &self.vertices[arg_sort_xmy.apply_inv_idx(i) + 3];
+        }
     }
 
     pub fn to_str(&self) -> String {

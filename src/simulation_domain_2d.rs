@@ -1,5 +1,5 @@
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct SimulationDomain2D {
     anchor: [f64; 2],
     sides: [f64; 2],
@@ -10,11 +10,11 @@ impl SimulationDomain2D {
         SimulationDomain2D{anchor: a, sides: s}
     }
 
-    pub fn anchor(&self) -> &[f64; 2] {
-        &self.anchor
+    pub fn anchor(&self) -> [f64; 2] {
+        self.anchor.clone()
     }
 
-    pub fn sides(&self) -> &[f64; 2] {
-        &self.sides
+    pub fn sides(&self) -> [f64; 2] {
+        self.sides.clone()
     }
 }
