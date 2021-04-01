@@ -10,8 +10,10 @@ These assumptions are enforced and used while building the Delaunay triangulatio
 
 ## TODO
 - [ ] Fix Lloyd's relaxation
-- [ ] Use square starting triangulation?
+- [ ] Use square starting triangulation? -> Better precision?
 - [ ] Use arbitrary precision in geometry calculations Delaunay triangulation
 - [ ] Periodic boundary conditions
+- [ ] Make parameter of number of dummy triangles and vertices
 - [ ] Treat non-periodic case correctly
 - [ ] 3D
+- [ ] embed Vertex2D in DelaunayVertex2D? 

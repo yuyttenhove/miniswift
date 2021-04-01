@@ -61,6 +61,10 @@ pub(super) fn circumcenter_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f
     Vertex2D{x: s3x+ax, y: s3y+ay}
 }
 
+pub(super) fn circumradius_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> f64 {
+    (Vertex2D{x: ax, y: ay} - circumcenter_2d(ax, ay, bx, by, cx, cy)).norm()
+}
+
 
 pub(super) fn oriented_volume_2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> f64 {
     (ax*by + bx*cy + cx*ay - bx*ay - cx*by - ax*cy) / 2.

@@ -1,5 +1,5 @@
 use crate::simulation_domain_2d::SimulationDomain2D;
-use crate::tessellations::geometry::{orient_2d, in_circle_2d, circumcenter_2d};
+use crate::tessellations::geometry::{orient_2d, in_circle_2d, circumcenter_2d, circumradius_2d};
 use super::Vertex2D;
 use crate::utils::random_choose;
 use std::collections::VecDeque;
@@ -12,12 +12,19 @@ pub(super) struct DelaunayVertex2D {
     pub(super)x: f64,
     pub(super)y: f64,
     pub(super) triangle: i32,
-    pub(super) index_in_triangle: i8
+    pub(super) index_in_triangle: i8,
+    search_radius: f64
 }
 
 impl Default for DelaunayVertex2D {
     fn default() -> DelaunayVertex2D {
-        DelaunayVertex2D { x: f64::NAN, y: f64::NAN, triangle: -1, index_in_triangle: -1 }
+        DelaunayVertex2D {
+            x: f64::NAN,
+            y: f64::NAN,
+            triangle: -1,
+            index_in_triangle: -1,
+            search_radius: f64::INFINITY
+        }
     }
 }
 
@@ -67,6 +74,17 @@ impl DelaunayTriangle2D {
             triangulation.vertices[self.vertices[2] as usize].y
         )
     }
+
+    fn circumradius(&self, triangulation: &DelaunayTriangulation2D) -> f64 {
+        circumradius_2d(
+            triangulation.vertices[self.vertices[0] as usize].x,
+            triangulation.vertices[self.vertices[0] as usize].y,
+            triangulation.vertices[self.vertices[1] as usize].x,
+            triangulation.vertices[self.vertices[1] as usize].y,
+            triangulation.vertices[self.vertices[2] as usize].x,
+            triangulation.vertices[self.vertices[2] as usize].y,
+        )
+    }
 }
 
 
@@ -74,15 +92,15 @@ impl DelaunayTriangle2D {
 pub struct DelaunayTriangulation2D {
     pub(super) vertices: Vec<DelaunayVertex2D>,
     pub(super) triangles: Vec<DelaunayTriangle2D>,
+    pub(super) domain: SimulationDomain2D,
+    pub(super) is_periodic: bool,
+    pub(super) n_vertices: usize,
     anchor: [f64; 2],
     side: f64,
-    domain: SimulationDomain2D,
     inverse_side: f64,
     current_triangle_idx: i32,
     current_vertex_idx: i32,
-    triangles_to_check: VecDeque<i32>,
-    is_periodic: bool,
-    n_vertices: usize
+    triangles_to_check: VecDeque<i32>
 }
 
 impl DelaunayTriangulation2D {
@@ -142,6 +160,7 @@ impl DelaunayTriangulation2D {
         for (i, &x) in points_x.iter().enumerate() {
             d.insert_point(x, points_y[i]);
         }
+        d.n_vertices = d.vertices.len() - 3;
         if make_periodic {
             d.make_periodic();
         }
@@ -193,7 +212,6 @@ impl DelaunayTriangulation2D {
     fn make_periodic(&mut self) {
         use ordered_float::OrderedFloat;
         assert!(!self.is_periodic, "Delaunay triangulation is already periodic!");
-        self.n_vertices = self.vertices.len() - 3;
         let arg_sort_x = permutation::sort_by_key(&self.vertices[3..],
                                                   |v| OrderedFloat(v.x));
         let arg_sort_y = permutation::sort_by_key(&self.vertices[3..],
@@ -203,100 +221,153 @@ impl DelaunayTriangulation2D {
         let arg_sort_xmy = permutation::sort_by_key(&self.vertices[3..],
                                                   |v| OrderedFloat(v.x - v.y));
 
-        // initial value of search radius: twice average inter-particle distance for uniform distribution of particles
-        let search_radius = 2. * self.domain.sides()[0] / f64::sqrt(self.n_vertices as f64);
-        let old_search_radius = 0.;
+        // initial value of search radius: the average inter-particle distance for uniform distribution of particles
+        let mut search_radius = self.domain.sides()[0] / f64::sqrt(self.n_vertices as f64);
 
-        self.add_ghost_particles(search_radius, old_search_radius, arg_sort_x, arg_sort_y, arg_sort_xpy, arg_sort_xmy);
+        let mut old_search_radius = 0.;
+        let mut n_vertices_larger_search_radius = self.n_vertices;
 
-        // TODO update search radius and add more ghost particles until all particles search radii are smaller than search radius
+        while n_vertices_larger_search_radius > 0 {
+            self.add_ghost_vertices(search_radius, old_search_radius, &arg_sort_x, &arg_sort_y, &arg_sort_xpy, &arg_sort_xmy);
+            self.update_vertex_search_radii(search_radius, n_vertices_larger_search_radius);
+            n_vertices_larger_search_radius = self.vertices[3..self.n_vertices+3].iter()
+                .filter(|v| (*v).search_radius > search_radius).count();
+            let new_search_radius = 1.5 * search_radius;
+            old_search_radius = search_radius;
+            search_radius = new_search_radius;
+        }
 
         self.is_periodic = true;
     }
 
-    fn add_ghost_particles(&mut self, search_radius: f64, old_search_radius: f64,
-                           arg_sort_x: Permutation, arg_sort_y: Permutation,
-                           arg_sort_xpy: Permutation, arg_sort_xmy: Permutation, ) {
+    fn add_ghost_vertices(&mut self, search_radius: f64, old_search_radius: f64,
+                          arg_sort_x: &Permutation, arg_sort_y: &Permutation,
+                          arg_sort_xpy: &Permutation, arg_sort_xmy: &Permutation) {
         let sides = self.domain.sides();
         // add ghost particles in positive x direction
-        let mut i: usize = 0;
-        let mut vertex = &self.vertices[arg_sort_x.apply_inv_idx(i) + 3];
-        let mut comp_value = vertex.x;
-        while old_search_radius <= comp_value && comp_value < search_radius
-            && i < self.n_vertices - 1 {
-            self.insert_point(vertex.x + sides[0], vertex.y);
-            i += 1;
-            vertex = &self.vertices[arg_sort_x.apply_inv_idx(i) + 3];
-        }
+        self.add_ghost_vertices_along_axis(
+            &arg_sort_x, |v| v.x, 1,
+            old_search_radius, search_radius, |v| (v.x + sides[0],  v.y)
+        );
         // add ghost particles in negative x direction
-        i = self.n_vertices - 1;
-        vertex = &self.vertices[arg_sort_x.apply_inv_idx(i) + 3];
-        comp_value = sides[0] - vertex.x;
-        while old_search_radius <= comp_value && comp_value < search_radius && i > 0 {
-            self.insert_point(vertex.x - sides[0], vertex.y);
-            i -= 1;
-            vertex = &self.vertices[arg_sort_x.apply_inv_idx(i) + 3];
-        }
+        self.add_ghost_vertices_along_axis(
+            &arg_sort_x, |v| sides[0] - v.x, -1,
+            old_search_radius, search_radius, |v| (v.x - sides[0], v.y)
+        );
         // add ghost particles in positive y direction
-        i = 0;
-        vertex = &self.vertices[arg_sort_y.apply_inv_idx(i) + 3];
-        comp_value = vertex.y;
-        while old_search_radius <= comp_value && comp_value < search_radius
-            && i < self.n_vertices - 1 {
-            self.insert_point(vertex.x, vertex.y + sides[1]);
-            i += 1;
-            vertex = &self.vertices[arg_sort_y.apply_inv_idx(i) + 3];
-        }
+        self.add_ghost_vertices_along_axis(
+            &arg_sort_y, |v| v.y, 1,
+            old_search_radius, search_radius, |v| (v.x, v.y + sides[1])
+        );
         // add ghost particles in negative y direction
-        i = self.n_vertices - 1;
-        vertex = &self.vertices[arg_sort_y.apply_inv_idx(i) + 3];
-        comp_value = sides[1] - vertex.y;
-        while old_search_radius <= comp_value && comp_value < search_radius && i > 0 {
-            self.insert_point(vertex.x, vertex.y - sides[1]);
-            i -= 1;
-            vertex = &self.vertices[arg_sort_y.apply_inv_idx(i) + 3];
-        }
+        self.add_ghost_vertices_along_axis(
+            &arg_sort_y, |v| sides[1] - v.y, -1,
+            old_search_radius, search_radius, |v| (v.x, v.y - sides[1])
+        );
+        // In order to search for all particles up to r away from the corner in the diagonal
+        // directions, we must compensate with a factor 1/sqrt(2); without it we could miss some
+        // particles between sqrt(2)/2*r and r away from the corner...
+        let sqrt2 = f64::sqrt(2.);
         // add ghost particles in positive xpy direction
-        i = 0;
-        vertex = &self.vertices[arg_sort_xpy.apply_inv_idx(i) + 3];
-        comp_value = vertex.x*vertex.x + vertex.y*vertex.y;
-        while old_search_radius*old_search_radius <= comp_value
-            && comp_value < search_radius*search_radius && i < self.n_vertices - 1 {
-            self.insert_point(vertex.x + sides[0], vertex.y + sides[1]);
-            i += 1;
-            vertex = &self.vertices[arg_sort_xpy.apply_inv_idx(i) + 3];
-        }
+        self.add_ghost_vertices_along_axis(
+            &arg_sort_xpy, |v| (v.x + v.y) / sqrt2, 1,
+            old_search_radius, search_radius, |v| (v.x + sides[0], v.y + sides[1])
+        );
         // add ghost particles in negative xpy direction
-        i = self.n_vertices - 1;
-        vertex = &self.vertices[arg_sort_xpy.apply_inv_idx(i) + 3];
-        comp_value = (sides[0] - vertex.x)*(sides[0] - vertex.x)
-            + (sides[1] - vertex.y)*(sides[1] - vertex.y);
-        while old_search_radius*old_search_radius <= comp_value
-            && comp_value < search_radius*search_radius && i > 0 {
-            self.insert_point(vertex.x - sides[0], vertex.y - sides[1]);
-            i -= 1;
-            vertex = &self.vertices[arg_sort_xpy.apply_inv_idx(i) + 3];
-        }
+        self.add_ghost_vertices_along_axis(
+            &arg_sort_xpy, |v| ((sides[0] - v.x) + (sides[1] - v.y)) / sqrt2, -1,
+            old_search_radius, search_radius, |v| (v.x - sides[0], v.y - sides[1])
+        );
         // add ghost particles in positive xmy direction
-        i = 0;
-        vertex = &self.vertices[arg_sort_xmy.apply_inv_idx(i) + 3];
-        comp_value = vertex.x*vertex.x + (sides[1] - vertex.y)*(sides[1] - vertex.y);
-        while old_search_radius*old_search_radius <= comp_value
-            && comp_value < search_radius*search_radius && i < self.n_vertices - 1 {
-            self.insert_point(vertex.x + sides[0], vertex.y - sides[1]);
-            i += 1;
-            vertex = &self.vertices[arg_sort_xmy.apply_inv_idx(i) + 3];
-        }
+        self.add_ghost_vertices_along_axis(
+            &arg_sort_xmy, |v| (v.x + (sides[1] - v.y)) / sqrt2, 1,
+            old_search_radius, search_radius, |v| (v.x + sides[0], v.y - sides[1])
+        );
         // add ghost particles in negative xmy direction
-        i = self.n_vertices - 1;
-        vertex = &self.vertices[arg_sort_xmy.apply_inv_idx(i) + 3];
-        comp_value = (sides[0] - vertex.x)*(sides[0] - vertex.x) + vertex.y*vertex.y;
-        while old_search_radius*old_search_radius <= comp_value
-            && comp_value < search_radius*search_radius && i > 0 {
-            self.insert_point(vertex.x - sides[0], vertex.y + sides[1]);
-            i -= 1;
-            vertex = &self.vertices[arg_sort_xmy.apply_inv_idx(i) + 3];
+        self.add_ghost_vertices_along_axis(
+            &arg_sort_xmy, |v| ((sides[0] - v.x) + v.y) / sqrt2, -1,
+            old_search_radius, search_radius, |v| (v.x - sides[0], v.y + sides[1])
+        );
+    }
+
+    fn add_ghost_vertices_along_axis(&mut self,
+                                     ordering: &Permutation,
+                                     comp_f: impl Fn(&DelaunayVertex2D)->f64,
+                                     direction: i8,
+                                     old_search_radius: f64,
+                                     search_radius: f64,
+                                     insert_f: impl Fn(&DelaunayVertex2D)->(f64, f64)) {
+        let mut i: usize;
+        if direction == 1 { i = 0; }
+        else if direction == -1 { i = self.n_vertices - 1; }
+        else { panic!("The only alowed values for direction are 1 or -1!"); }
+
+        let mut vertex = &self.vertices[ordering.apply_inv_idx(i) + 3];
+        let mut comp_value = comp_f(vertex);
+        while comp_value < search_radius {
+            if old_search_radius <= comp_value {
+                let (x, y) = insert_f(vertex);
+                self.insert_point(x, y);
+            }
+            if direction == 1 {
+                if i == self.n_vertices - 1 {break;}
+                i += 1;
+            } else {
+                if i == 0 {break;}
+                i -= 1;
+            }
+            vertex = &self.vertices[ordering.apply_inv_idx(i) + 3];
+            comp_value = comp_f(vertex);
         }
+    }
+
+    fn update_vertex_search_radii(&mut self, current_search_radius: f64, previous_n_vertices_larger_radius: usize) {
+        let mut radii = Vec::<(usize, f64)>::with_capacity(previous_n_vertices_larger_radius);
+        for (i, vertex) in self.vertices[3..self.n_vertices+3].iter().enumerate() {
+            if vertex.search_radius < current_search_radius { continue; }
+            let mut max_radius: f64 = 0.;
+            for triangle_idx in self.get_triangle_idx_around_vertex(i + 3) {
+                // any point within a circle of radius 2*current circumradius around current vertex
+                // CAN violate the delaunay criterion for the current triangle. In most cases
+                // however this rather is unlikely...
+                max_radius = max_radius.max(2. * self.triangles[triangle_idx].circumradius(self));
+            }
+            radii.push((i+3, max_radius));
+        }
+        for (i, radius) in radii {
+            self.vertices[i].search_radius = radius;
+        }
+    }
+
+    pub fn get_triangle_idx_around_vertex(&self, vertex_idx: usize) -> Vec::<usize> {
+        let vertex = &self.vertices[vertex_idx];
+        let start_triangle_idx_in_d = vertex.triangle;
+        let mut triangle_indices = vec![start_triangle_idx_in_d as usize];
+        let mut current_triangle_idx_in_d = start_triangle_idx_in_d;
+        let mut idx_in_current_triangle = vertex.index_in_triangle;
+        let mut current_triangle = &self.triangles[current_triangle_idx_in_d as usize];
+        let mut next_triangle_idx_in_current_triangle = ((idx_in_current_triangle + 1) % 3) as usize;
+        let mut next_triangle_idx_in_d = current_triangle.neighbours[next_triangle_idx_in_current_triangle];
+        let mut current_triangle_idx_in_next_triangle = current_triangle.index_in_neighbours[next_triangle_idx_in_current_triangle];
+        let mut idx_in_next_triangle = (current_triangle_idx_in_next_triangle + 1) % 3;
+
+        while next_triangle_idx_in_d != start_triangle_idx_in_d {
+            assert_eq!(
+                current_triangle.vertices[idx_in_current_triangle as usize],
+                self.triangles[next_triangle_idx_in_d as usize].vertices[idx_in_next_triangle as usize],
+                "Vertex in next triangle is not the same as the current vertex!"
+            );
+            triangle_indices.push(next_triangle_idx_in_d as usize);
+
+            current_triangle_idx_in_d = next_triangle_idx_in_d;
+            idx_in_current_triangle = idx_in_next_triangle;
+            current_triangle = &self.triangles[current_triangle_idx_in_d as usize];
+            next_triangle_idx_in_current_triangle = ((idx_in_current_triangle + 1) % 3) as usize;
+            next_triangle_idx_in_d = current_triangle.neighbours[next_triangle_idx_in_current_triangle];
+            current_triangle_idx_in_next_triangle = current_triangle.index_in_neighbours[next_triangle_idx_in_current_triangle];
+            idx_in_next_triangle = (current_triangle_idx_in_next_triangle + 1) % 3;
+        }
+        triangle_indices
     }
 
     pub fn to_str(&self) -> String {

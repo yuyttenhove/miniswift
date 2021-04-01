@@ -27,8 +27,8 @@ def plot_tesselation(vertices, cells, centroids):
     cells_xy_list = [vertices.values[cell_idx, :] for cell_idx in cells]
     patches = [plt.Polygon(xy, closed=True, edgecolor="blue", facecolor="none", linewidth=.5) for xy in cells_xy_list]
     ax.add_collection(PatchCollection(patches, match_original=True))
-    # ax.set_xlim([0, 1])
-    # ax.set_ylim([0, 1])
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
     ax.set_aspect("equal")
     plt.tight_layout()
     plt.savefig("voronoi.pdf")
@@ -58,7 +58,7 @@ def read_file(fname: Path):
 
 def main():
     base_path = Path(__file__).parent
-    fname = base_path / "voronoi.txt"
+    fname = base_path / "voronoi_relaxed.txt"
     vertices, cells, centroid_df = read_file(fname)
 
     plot_tesselation(vertices, cells, centroid_df)
