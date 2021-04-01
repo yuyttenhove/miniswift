@@ -19,3 +19,4 @@ These assumptions are enforced and used while building the Delaunay triangulatio
 - [ ] 3D
 - [ ] embed Vertex2D in DelaunayVertex2D and Triangle2D in DelaunayTriangle2D? -> store plain triangles and vertices in 
   seperate lists in DelaunayTriangulation2D and refer to those using indices?
+- [ ] Insert vertices in Hilbert order
