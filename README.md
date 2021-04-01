@@ -9,10 +9,10 @@ These assumptions are enforced and used while building the Delaunay triangulatio
 - The neighbourlist of any triangle in a Delaunay-triangulation is in the order of the opposing corners
 
 ## TODO
-- [ ] Fix Lloyd's relaxation
+- [X] Fix Lloyd's relaxation
 - [ ] Use square starting triangulation? -> Better precision?
 - [ ] Use arbitrary precision in geometry calculations Delaunay triangulation
-- [ ] Periodic boundary conditions
+- [X] Periodic boundary conditions
 - [ ] Make parameter of number of dummy triangles and vertices
 - [ ] Treat non-periodic case correctly
 - [ ] 3D
