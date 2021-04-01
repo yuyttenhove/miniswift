@@ -37,6 +37,6 @@ fn main() {
     d.to_file("delaunay.txt");
     g.to_file("voronoi.txt");
 
-    let g_relax = g.lloyd_relax(0.001, 1000);
+    let g_relax = g.lloyd_relax(0.001, 2);
     g_relax.to_file("voronoi_relaxed.txt")
 }

@@ -7,6 +7,7 @@ These assumptions are enforced and used while building the Delaunay triangulatio
 - The points in any triangle in a Delaunay-triangulation are always listed counterclockwise.
 - The last point in any triangle in a Delaunay-triangulation is the point of that triangle that was last added to the triangulation. 
 - The neighbourlist of any triangle in a Delaunay-triangulation is in the order of the opposing corners
+- The last created triangle is the first tested triangle when inserting a new point
 
 ## TODO
 - [X] Fix Lloyd's relaxation
