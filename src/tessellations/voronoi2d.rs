@@ -74,6 +74,19 @@ impl VoronoiGrid2D {
         grid
     }
 
+    pub fn from_points(points_x: &Vec<f64>,
+                       points_y: &Vec<f64>,
+                       simulation_domain: SimulationDomain2D,
+                       make_periodic: bool) -> VoronoiGrid2D {
+        let delaunay = DelaunayTriangulation2D::from_points(
+            points_x,
+            points_y,
+            simulation_domain,
+            make_periodic
+        );
+        VoronoiGrid2D::from_delaunay_triangulation(&delaunay)
+    }
+
     fn add_cell_from_delaunay_generator(&mut self, generator_idx: usize, triangulation: &DelaunayTriangulation2D) {
         let generator = &triangulation.vertices[generator_idx];
         let current_voronoi_cell_idx = generator_idx as i32 - 3;
@@ -82,7 +95,7 @@ impl VoronoiGrid2D {
         let generator_as_vertex2d = Vertex2D{x: generator.x, y: generator.y};
 
         for current_triangle_idx_in_d in triangulation.get_triangle_idx_around_vertex(generator_idx) {
-            let current_triangle = &triangulation.triangles[current_triangle_idx_in_d as usize];
+            let current_triangle = &triangulation.triangles[current_triangle_idx_in_d];
             assert_eq!(current_voronoi_cell_idx + 3, current_triangle.vertices[idx_in_current_triangle as usize]);
             let next_triangle_idx_in_current_triangle = ((idx_in_current_triangle + 1) % 3) as usize;
             let next_triangle_idx_in_d = current_triangle.neighbours[next_triangle_idx_in_current_triangle];
