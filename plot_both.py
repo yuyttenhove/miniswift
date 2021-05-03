@@ -2,6 +2,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 import seaborn as sns
+import numpy as np
 from phd_python_scripts.utils.plotting_utils import subplots
 
 from plot_delaunay import read_file as read_delaunay_file
@@ -17,10 +18,11 @@ def plot_tesselation(delaunay_vertices, delaunay_triangles, voronoi_vertices, vo
     # ax = sns.scatterplot(data=voronoi_centroids, x="x", y="y", s=16, color="red", ax=ax, marker="P")
     cells_xy_list = [voronoi_vertices.values[cell_idx, :] for cell_idx in voronoi_cells]
     patches = [plt.Polygon(xy, closed=True, edgecolor="blue", facecolor="none", linewidth=1) for xy in cells_xy_list]
+    patches.append(plt.Polygon(np.array([[0, 0], [1, 0], [1, 1], [0, 1]]), closed=True, edgecolor="red", facecolor="none", linewidth=1, ls="--"))
     ax.add_collection(PatchCollection(patches, match_original=True))
 
-    ax.set_xlim([.1, .9])
-    ax.set_ylim([.1, .9])
+    ax.set_xlim([-.1, 1.1])
+    ax.set_ylim([-.1, 1.1])
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     ax.set_aspect("equal")

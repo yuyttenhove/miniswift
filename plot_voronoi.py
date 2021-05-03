@@ -29,8 +29,8 @@ def plot_tesselation(vertices, cells, centroids):
     cells_xy_list = [vertices.values[cell_idx, :] for cell_idx in cells]
     patches = [plt.Polygon(xy, closed=True, edgecolor="blue", facecolor="none", linewidth=1) for xy in cells_xy_list]
     ax.add_collection(PatchCollection(patches, match_original=True))
-    ax.set_xlim([.1, .9])
-    ax.set_ylim([.1, .9])
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     ax.set_aspect("equal")

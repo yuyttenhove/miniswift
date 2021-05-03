@@ -6,9 +6,12 @@ use rand::SeedableRng;
 mod simulation_domain_2d;
 mod tessellations;
 mod utils;
+mod mini_swift;
+
 
 fn main() {
-    let domain = SimulationDomain2D::new([0., 0.], [1., 1.]);
+    let side = 1.;
+    let domain = SimulationDomain2D::new([0., 0.], [side, side]);
 
     let mut x_values = Vec::<f64>::new();
     let mut y_values = Vec::<f64>::new();
@@ -16,7 +19,7 @@ fn main() {
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let uniform = true;
     if uniform {
-        let uniform = rand::distributions::Uniform::from(0.0..1.0);
+        let uniform = rand::distributions::Uniform::from(0.0..side);
         for _ in 0..100 {
             x_values.push(uniform.sample(&mut rng));
             y_values.push(uniform.sample(&mut rng));
@@ -37,6 +40,6 @@ fn main() {
     d.to_file("delaunay.txt");
     g.to_file("voronoi.txt");
 
-    let g_relax = g.lloyd_relax(0.001, 10);
+    let g_relax = g.lloyd_relax(0.000001, 10);
     g_relax.to_file("voronoi_relaxed.txt")
 }

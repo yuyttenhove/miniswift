@@ -9,8 +9,10 @@ use permutation::Permutation;
 
 #[derive(Debug)]
 pub(super) struct DelaunayVertex2D {
-    pub(super)x: f64,
-    pub(super)y: f64,
+    pub(super) x: f64,
+    pub(super) y: f64,
+    pub(super) x_scaled: f64,
+    pub(super) y_scaled: f64,
     pub(super) triangle: i32,
     pub(super) index_in_triangle: i8,
     search_radius: f64
@@ -21,6 +23,8 @@ impl Default for DelaunayVertex2D {
         DelaunayVertex2D {
             x: f64::NAN,
             y: f64::NAN,
+            x_scaled: f64::NAN,
+            y_scaled: f64::NAN,
             triangle: -1,
             index_in_triangle: -1,
             search_radius: f64::INFINITY
@@ -213,13 +217,13 @@ impl DelaunayTriangulation2D {
         use ordered_float::OrderedFloat;
         assert!(!self.is_periodic, "Delaunay triangulation is already periodic!");
         let arg_sort_x = permutation::sort_by_key(&self.vertices[3..],
-                                                  |v| OrderedFloat(v.x));
+                                                  |v| OrderedFloat(v.x_scaled));
         let arg_sort_y = permutation::sort_by_key(&self.vertices[3..],
-                                                  |v| OrderedFloat(v.y));
+                                                  |v| OrderedFloat(v.y_scaled));
         let arg_sort_xpy = permutation::sort_by_key(&self.vertices[3..],
-                                                  |v| OrderedFloat(v.x + v.y));
+                                                  |v| OrderedFloat(v.x_scaled + v.y_scaled));
         let arg_sort_xmy = permutation::sort_by_key(&self.vertices[3..],
-                                                  |v| OrderedFloat(v.x - v.y));
+                                                  |v| OrderedFloat(v.x_scaled - v.y_scaled));
 
         // initial value of search radius: the average inter-particle distance for uniform distribution of particles
         let mut search_radius = self.domain.sides()[0] / f64::sqrt(self.n_vertices as f64);
@@ -247,7 +251,7 @@ impl DelaunayTriangulation2D {
         // add ghost particles in positive x direction
         self.add_ghost_vertices_along_axis(
             &arg_sort_x, |v| v.x, 1,
-            old_search_radius, search_radius, |v| (v.x + sides[0],  v.y)
+            old_search_radius, search_radius, |v| (v.x + sides[0], v.y)
         );
         // add ghost particles in negative x direction
         self.add_ghost_vertices_along_axis(
@@ -370,27 +374,30 @@ impl DelaunayTriangulation2D {
         triangle_indices
     }
 
-    pub fn to_str(&self) -> String {
-        let mut result = String::from("# Vertices #\n");
-        for (i, v) in self.vertices.iter().enumerate() {
-            result += &format!("{}\t({}, {})\n", i, v.x, v.y);
+    pub fn is_connected_to_non_dummy_non_ghost_vertex(&self, vertex_idx: usize) -> bool {
+        if vertex_idx < self.n_vertices + 3 && vertex_idx > 2 {
+            return true;
         }
-
-        result += "\n# Triangles #\n";
-        for (i, triangle) in self.triangles[3..].iter().enumerate() {
-            result += &format!("{}\t({}, {}, {})\n", i, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
+        let vertex = &self.vertices[vertex_idx];
+        let mut idx_in_current_triangle = vertex.index_in_triangle;
+        for current_triangle_idx_in_d in self.get_triangle_idx_around_vertex(vertex_idx) {
+            let current_triangle = &self.triangles[current_triangle_idx_in_d];
+            let next_triangle_idx_in_current_triangle = ((idx_in_current_triangle + 1) % 3) as usize;
+            let neighbouring_vertex_idx = current_triangle.vertices[((idx_in_current_triangle + 2) % 3) as usize] as usize;
+            if neighbouring_vertex_idx < self.n_vertices + 3 && neighbouring_vertex_idx > 2 {
+                return true;
+            }
+            let current_triangle_idx_in_next_triangle = current_triangle.index_in_neighbours[next_triangle_idx_in_current_triangle];
+            idx_in_current_triangle = (current_triangle_idx_in_next_triangle + 1) % 3;
         }
-        result
-    }
-
-    pub fn to_file(&self, filename: &str) {
-        fs::write(filename, self.to_str()).expect("Unable to write to file!");
+        false
     }
 
     fn new_vertex(&mut self, x: f64, y: f64) -> i32 {
         // TODO possibly manage the size of self.vertices more intelligently.
+        let (x_scaled, y_scaled) = (x * self.inverse_side, y* self.inverse_side);
         self.current_vertex_idx = self.vertices.len() as i32;
-        self.vertices.push(DelaunayVertex2D{x, y, ..DelaunayVertex2D::default()});
+        self.vertices.push(DelaunayVertex2D{ x, y, x_scaled, y_scaled, ..DelaunayVertex2D::default()});
 
         self.current_vertex_idx
     }
@@ -445,9 +452,9 @@ impl DelaunayTriangulation2D {
             v1 = &self.vertices[current_triangle.vertices[1] as usize];
             v2 = &self.vertices[current_triangle.vertices[2] as usize];
 
-            test2 = orient_2d(v0.x, v0.y, v1.x, v1.y, vertex.x, vertex.y);
-            test0 = orient_2d(v1.x, v1.y, v2.x, v2.y, vertex.x, vertex.y);
-            test1 = orient_2d(v2.x, v2.y, v0.x, v0.y, vertex.x, vertex.y);
+            test2 = orient_2d(v0.x_scaled, v0.y_scaled, v1.x_scaled, v1.y_scaled, vertex.x_scaled, vertex.y_scaled);
+            test0 = orient_2d(v1.x_scaled, v1.y_scaled, v2.x_scaled, v2.y_scaled, vertex.x_scaled, vertex.y_scaled);
+            test1 = orient_2d(v2.x_scaled, v2.y_scaled, v0.x_scaled, v0.y_scaled, vertex.x_scaled, vertex.y_scaled);
 
             if (test0 > 0.) && (test1 > 0.) && (test2 > 0.) {
                 found = true;
@@ -496,7 +503,7 @@ impl DelaunayTriangulation2D {
         let neighbour = &self.triangles[neighbour_idx as usize];
         let d = &self.vertices[neighbour.vertices[triangle.index_in_neighbours[2] as usize] as usize];
 
-        let test = in_circle_2d(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y);
+        let test = in_circle_2d(a.x_scaled, a.y_scaled, b.x_scaled, b.y_scaled, c.x_scaled, c.y_scaled, d.x_scaled, d.y_scaled);
 
         if test < 0. {
             self.flip_triangles(triangle_idx, neighbour_idx);
@@ -574,7 +581,7 @@ impl DelaunayTriangulation2D {
                                  &self.vertices[triangle.vertices[1] as usize],
                                  &self.vertices[triangle.vertices[2] as usize]);
                 let d = &self.vertices[neighbour.vertices[idx_in_ngbr] as usize];
-                let in_circle = in_circle_2d(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y);
+                let in_circle = in_circle_2d(a.x_scaled, a.y_scaled, b.x_scaled, b.y_scaled, c.x_scaled, c.y_scaled, d.x_scaled, d.y_scaled);
                 assert!(in_circle >= 0., "in_circle test gave {:?}", in_circle)
             }
         }
@@ -584,5 +591,22 @@ impl DelaunayTriangulation2D {
                        "Testing vertex-triangle correspondence");
         }
         // println!("Consistency checks passed!");
+    }
+
+    pub fn to_str(&self) -> String {
+        let mut result = String::from("# Vertices #\n");
+        for (i, v) in self.vertices.iter().enumerate() {
+            result += &format!("{}\t({}, {})\n", i, v.x, v.y);
+        }
+
+        result += "\n# Triangles #\n";
+        for (i, triangle) in self.triangles[3..].iter().enumerate() {
+            result += &format!("{}\t({}, {}, {})\n", i, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2]);
+        }
+        result
+    }
+
+    pub fn to_file(&self, filename: &str) {
+        fs::write(filename, self.to_str()).expect("Unable to write to file!");
     }
 }
