@@ -2,3 +2,5 @@
 *.pdf
 /target
 .idea
+__pycache__
+
