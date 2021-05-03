@@ -4,13 +4,17 @@ import seaborn as sns
 from parse import parse
 import pandas as pd
 import numpy as np
+from phd_python_scripts.utils.plotting_utils import subplots
 
 
 def plot_tesselation(vertices, triangles):
-    ax = sns.scatterplot(data=vertices, x="x", y="y", s=8, color="black")
-    ax.triplot(vertices["x"], vertices["y"], triangles=triangles, lw=.5, color="black")
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
+    _, ax = subplots(figsize=(10, 10))
+    ax = sns.scatterplot(data=vertices, x="x", y="y", s=16, ax=ax, color="black", zorder=2)
+    ax.triplot(vertices["x"], vertices["y"], triangles=triangles, lw=1, color="darkgray")
+    ax.set_xlim([.1, .9])
+    ax.set_ylim([.1, .9])
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
     ax.set_aspect("equal")
     plt.tight_layout()
     plt.savefig("delaunay.pdf")

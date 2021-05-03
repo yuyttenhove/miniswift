@@ -5,6 +5,7 @@ import seaborn as sns
 from parse import parse
 import pandas as pd
 import numpy as np
+from phd_python_scripts.utils.plotting_utils import subplots
 
 
 def clean_lines(lines):
@@ -22,13 +23,16 @@ def read_points_from_lines(lines):
 
 
 def plot_tesselation(vertices, cells, centroids):
-    ax = sns.scatterplot(data=vertices, x="x", y="y", s=8, color="blue")
-    ax = sns.scatterplot(data=centroids, x="x", y="y", s=8, color="red", ax=ax, marker="P")
+    _, ax = subplots(figsize=(10, 10))
+    # ax = sns.scatterplot(data=centroids, x="x", y="y", s=16, color="red", ax=ax, marker="P")
+    # ax = sns.scatterplot(data=vertices, x="x", y="y", s=8, color="blue", ax=ax)
     cells_xy_list = [vertices.values[cell_idx, :] for cell_idx in cells]
-    patches = [plt.Polygon(xy, closed=True, edgecolor="blue", facecolor="none", linewidth=.5) for xy in cells_xy_list]
+    patches = [plt.Polygon(xy, closed=True, edgecolor="blue", facecolor="none", linewidth=1) for xy in cells_xy_list]
     ax.add_collection(PatchCollection(patches, match_original=True))
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
+    ax.set_xlim([.1, .9])
+    ax.set_ylim([.1, .9])
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
     ax.set_aspect("equal")
     plt.tight_layout()
     plt.savefig("voronoi.pdf")
