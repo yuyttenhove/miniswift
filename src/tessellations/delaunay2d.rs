@@ -171,7 +171,7 @@ impl DelaunayTriangulation2D {
         d
     }
 
-    fn insert_point(&mut self, x: f64, y: f64) {
+    pub fn insert_point(&mut self, x: f64, y: f64) {
         // add vertex
         self.new_vertex(x, y);
 
