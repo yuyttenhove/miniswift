@@ -13,8 +13,8 @@ def plot_tesselation(vertices, triangles, savename):
     ax.triplot(vertices["x"], vertices["y"], triangles=triangles, lw=1, color="darkgray")
     ax.set_xlim([-1, 4])
     ax.set_ylim([-1, 4])
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
+    # ax.get_xaxis().set_visible(False)
+    # ax.get_yaxis().set_visible(False)
     ax.set_aspect("equal")
     plt.tight_layout()
     plt.savefig(savename)
@@ -47,11 +47,12 @@ def read_file(fname: Path):
 
 
 def main():
+    basename = "test"
     base_path = Path(__file__).parent
-    fname = base_path / "test.txt"
+    fname = base_path / f"{basename}.txt"
     vertices, triangles = read_file(fname)
 
-    plot_tesselation(vertices, triangles, "test.pdf")
+    plot_tesselation(vertices, triangles, base_path / f"{basename}.pdf")
 
 
 

@@ -12,6 +12,7 @@ pub struct Cell {
     pub progeny: Option<[Box<Cell>; 4]>,
     pub del_tess: Option<DelaunayTriangulation2D>,
     vor_tess: Option<VoronoiGrid2D>,
+    max_h: f64
 }
 
 impl Cell {
@@ -19,6 +20,7 @@ impl Cell {
         Cell {
             domain: SimulationDomain2D::new(anchor, sides),
             particles: Some(vec![]),
+            max_h: 0.,
             ..Cell::default() }
     }
 
@@ -42,7 +44,10 @@ impl Cell {
 
     fn add_particle(&mut self, x: f64, y: f64, h: f64) {
         match self.particles.as_mut() {
-            Some(particles) => particles.push(Particle::new(x, y, h)),
+            Some(particles) => {
+                if h > self.max_h { self.max_h = h; }
+                particles.push(Particle::new(x, y, h));
+            },
             None => panic!("Trying to add a particle to cell which is not a leaf!")
         }
     }
