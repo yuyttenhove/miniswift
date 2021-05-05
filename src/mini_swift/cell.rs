@@ -4,6 +4,7 @@ use crate::tessellations::{DelaunayTriangulation2D, VoronoiGrid2D};
 
 mod hydro_iact_density;
 mod hydro_iact_force;
+mod hydro_ghost;
 
 #[derive(Default)]
 pub struct Cell {

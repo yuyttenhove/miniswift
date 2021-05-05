@@ -9,14 +9,14 @@ use permutation::Permutation;
 
 
 #[derive(Debug)]
-pub(super) struct DelaunayVertex2D {
+pub struct DelaunayVertex2D {
     pub(super) x: f64,
     pub(super) y: f64,
     pub(super) x_scaled: f64,
     pub(super) y_scaled: f64,
     pub(super) triangle: i32,
     pub(super) index_in_triangle: i8,
-    search_radius: f64
+    pub search_radius: f64
 }
 
 impl Default for DelaunayVertex2D {
@@ -95,11 +95,11 @@ impl DelaunayTriangle2D {
 
 #[derive(Debug, Default)]
 pub struct DelaunayTriangulation2D {
-    pub(super) vertices: Vec<DelaunayVertex2D>,
+    pub vertices: Vec<DelaunayVertex2D>,
     pub(super) triangles: Vec<DelaunayTriangle2D>,
     pub(super) domain: SimulationDomain2D,
     pub(super) is_periodic: bool,
-    pub(super) n_vertices: usize,
+    pub n_vertices: usize,
     ghost_vertices_cell_directions: Vec<Direction>,
     ghost_vertices_offset: Option<usize>,
     anchor: [f64; 2],
@@ -177,7 +177,10 @@ impl DelaunayTriangulation2D {
     pub fn finalize(&mut self) {
         match self.ghost_vertices_offset{
             Some(offset) => panic!("Delaunay triangulation was already finalized!"),
-            None => self.ghost_vertices_offset = Some(self.vertices.len())
+            None => {
+                self.n_vertices = self.vertices.len() - 3;
+                self.ghost_vertices_offset = Some(self.vertices.len())
+            }
         }
     }
 
@@ -352,7 +355,7 @@ impl DelaunayTriangulation2D {
         }
     }
 
-    fn update_vertex_search_radii(&mut self, current_search_radius: f64, previous_n_vertices_larger_radius: usize) {
+    pub fn update_vertex_search_radii(&mut self, current_search_radius: f64, previous_n_vertices_larger_radius: usize) {
         let mut radii = Vec::<(usize, f64)>::with_capacity(previous_n_vertices_larger_radius);
         for (i, vertex) in self.vertices[3..self.n_vertices+3].iter().enumerate() {
             if vertex.search_radius < current_search_radius { continue; }

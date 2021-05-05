@@ -14,6 +14,21 @@ impl Cell{
         del_tess.finalize();
     }
 
+    fn iact_density_self_sub_pairs(&mut self) {
+        let progeny = self.progeny.as_mut().unwrap();
+        for i in 0..4 {
+            for j in i+1..4 {
+                let (ci, cj): (&mut Box<Cell>, &mut Box<Cell>);
+                unsafe{
+                    // j > i, so this is in fact safe
+                    ci = &mut *(progeny.get_unchecked_mut(i) as *mut _);
+                    cj = &mut *(progeny.get_unchecked_mut(j) as *mut _);
+                }
+                ci.iact_density_pair(cj, get_direction(ci.anchor(), cj.anchor()));
+            }
+        }
+    }
+
     pub fn iact_density_self(&mut self) {
         match self.progeny.as_mut() {
             Some(progeny) => {
@@ -22,19 +37,19 @@ impl Cell{
                     cell.iact_density_self()
                 }
                 // Do pair interactions between cells
-                for i in 0..4 {
-                    for j in i+1..4 {
-                        let (ci, cj): (&mut Box<Cell>, &mut Box<Cell>);
-                        unsafe{
-                            // j > i, so this is in fact safe
-                            ci = &mut *(progeny.get_unchecked_mut(i) as *mut _);
-                            cj = &mut *(progeny.get_unchecked_mut(j) as *mut _);
-                        }
-                        ci.iact_density_pair(cj, get_direction(ci.anchor(), cj.anchor()));
-                    }
-                }
+                self.iact_density_self_sub_pairs();
             }
             None => self.iact_density_self_base()
+        }
+    }
+
+    pub fn iact_density_self_ghost(&mut self) {
+        match self.progeny.as_mut() {
+            Some(progeny) => {
+                // Do only pair interactions between cells
+                self.iact_density_self_sub_pairs();
+            }
+            None => ()
         }
     }
 
@@ -51,15 +66,16 @@ impl Cell{
                 let delta_y = particle.y() - other_particle.y();
                 let dist_2 = delta_x * delta_x + delta_y * delta_y;
                 // first direction
+                // TODO symmetrize?
                 if dist_2 < particle.h * particle.h {
-                    if other_particle.added_to_del_tess & 1 << inv_sid != 0 {
+                    if other_particle.added_to_del_tess & 1 << inv_sid == 0 {
                         del_tess.insert_ghost_vertex(other_particle.x(), other_particle.y(), direction);
                         other_particle.added_to_del_tess |= 1 << inv_sid;
                     }
                 }
                 // the other direction
                 if dist_2 < other_particle.h * other_particle.h {
-                    if particle.added_to_del_tess & 1 << sid != 0 {
+                    if particle.added_to_del_tess & 1 << sid == 0 {
                         other_del_tess.insert_ghost_vertex(particle.x(), particle.y(), invert_direction(direction));
                         particle.added_to_del_tess |= 1 << sid;
                     }
