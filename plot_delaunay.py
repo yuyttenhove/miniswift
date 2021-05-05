@@ -7,17 +7,17 @@ import numpy as np
 from phd_python_scripts.utils.plotting_utils import subplots
 
 
-def plot_tesselation(vertices, triangles):
+def plot_tesselation(vertices, triangles, savename):
     _, ax = subplots(figsize=(10, 10))
     ax = sns.scatterplot(data=vertices, x="x", y="y", s=16, ax=ax, color="black", zorder=2)
     ax.triplot(vertices["x"], vertices["y"], triangles=triangles, lw=1, color="darkgray")
-    ax.set_xlim([0, 1])
-    ax.set_ylim([0, 1])
+    ax.set_xlim([-1, 4])
+    ax.set_ylim([-1, 4])
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     ax.set_aspect("equal")
     plt.tight_layout()
-    plt.savefig("delaunay.pdf")
+    plt.savefig(savename)
 
 
 def read_file(fname: Path):
@@ -48,10 +48,10 @@ def read_file(fname: Path):
 
 def main():
     base_path = Path(__file__).parent
-    fname = base_path / "delaunay.txt"
+    fname = base_path / "test.txt"
     vertices, triangles = read_file(fname)
 
-    plot_tesselation(vertices, triangles)
+    plot_tesselation(vertices, triangles, "test.pdf")
 
 
 
