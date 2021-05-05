@@ -3,6 +3,7 @@ use tessellations::{DelaunayTriangulation2D, VoronoiGrid2D};
 use rand_distr::Distribution;
 use rand::SeedableRng;
 use crate::mini_swift::Cell;
+use crate::mini_swift::direction::Direction;
 
 mod simulation_domain_2d;
 mod tessellations;
@@ -48,14 +49,19 @@ fn main() {
     g_relax.to_file("voronoi_relaxed.txt");
 
     let mut ci = Cell::from_dimensions([0., 0.], [1., 1.]);
-    let (x_values, y_values) = random_points(20, &ci.domain(), true);
-    ci.add_particles(&x_values, &y_values);
+    let (x_values, y_values) = random_points(100, &ci.domain(), true);
+    ci.add_particles(&x_values, &y_values, 0.2);
     ci.split();
     ci.delaunay_init();
     ci.iact_density_self();
 
     let mut cj = Cell::from_dimensions([1., 0.], [1., 1.]);
-    let (x_values, y_values) = random_points(20, &cj.domain(), true);
-    cj.add_particles(&x_values, &y_values);
+    let (x_values, y_values) = random_points(25, &cj.domain(), true);
+    cj.add_particles(&x_values, &y_values, 0.5);
     cj.delaunay_init();
+    cj.iact_density_self();
+
+    ci.iact_density_pair(&mut cj, Direction::Right);
+    cj.del_tess.as_ref().unwrap().to_file("test.txt");
+    ci.progeny.as_ref().unwrap()[3].del_tess.as_ref().unwrap().to_file("test2.txt");
 }

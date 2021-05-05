@@ -2,14 +2,15 @@ use crate::mini_swift::particle::Particle;
 use crate::simulation_domain_2d::SimulationDomain2D;
 use crate::tessellations::{DelaunayTriangulation2D, VoronoiGrid2D};
 
-mod hydro_iact;
+mod hydro_iact_density;
+mod hydro_iact_force;
 
 #[derive(Default)]
 pub struct Cell {
     domain: SimulationDomain2D,
     particles: Option<Vec<Particle>>,
-    progeny: Option<[Box<Cell>; 4]>,
-    del_tess: Option<DelaunayTriangulation2D>,
+    pub progeny: Option<[Box<Cell>; 4]>,
+    pub del_tess: Option<DelaunayTriangulation2D>,
     vor_tess: Option<VoronoiGrid2D>,
 }
 
@@ -33,15 +34,15 @@ impl Cell {
         self.domain
     }
 
-    pub fn add_particles(&mut self, x_vals: &[f64], y_vals: &[f64]) {
-        for (&x, &y) in x_vals.iter().zip(y_vals.iter()) {
-            self.add_particle(x, y);
+    pub fn add_particles(&mut self, x_values: &[f64], y_values: &[f64], h: f64) {
+        for (&x, &y) in x_values.iter().zip(y_values.iter()) {
+            self.add_particle(x, y, h);
         }
     }
 
-    fn add_particle(&mut self, x: f64, y: f64) {
+    fn add_particle(&mut self, x: f64, y: f64, h: f64) {
         match self.particles.as_mut() {
-            Some(particles) => particles.push(Particle::new(x, y)),
+            Some(particles) => particles.push(Particle::new(x, y, h)),
             None => panic!("Trying to add a particle to cell which is not a leaf!")
         }
     }
@@ -63,7 +64,7 @@ impl Cell {
         for particle in self.particles.as_ref().unwrap() {
             let pid = (particle.x() >= anchor[0] + half_sides[0]) as u8
                 + 2 * ((particle.y() >= anchor[1] + half_sides[1]) as u8);
-            progeny[pid as usize].add_particle(particle.x(), particle.y());
+            progeny[pid as usize].add_particle(particle.x(), particle.y(), particle.h);
         }
 
         self.progeny = Some(progeny);

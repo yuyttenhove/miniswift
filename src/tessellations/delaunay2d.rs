@@ -2,6 +2,7 @@ use crate::simulation_domain_2d::SimulationDomain2D;
 use crate::tessellations::geometry::{orient_2d, in_circle_2d, circumcenter_2d, circumradius_2d};
 use super::Vertex2D;
 use crate::utils::random_choose;
+use crate::mini_swift::direction::Direction;
 use std::collections::VecDeque;
 use std::fs;
 use permutation::Permutation;
@@ -99,6 +100,8 @@ pub struct DelaunayTriangulation2D {
     pub(super) domain: SimulationDomain2D,
     pub(super) is_periodic: bool,
     pub(super) n_vertices: usize,
+    ghost_vertices_cell_directions: Vec<Direction>,
+    ghost_vertices_offset: Option<usize>,
     anchor: [f64; 2],
     side: f64,
     inverse_side: f64,
@@ -162,7 +165,7 @@ impl DelaunayTriangulation2D {
         assert_eq!(points_x.len(), points_y.len(), "points_x and points_y must have the same length!");
         let mut d = DelaunayTriangulation2D::new(simulation_domain, points_x.len(), points_y.len() * 2);
         for (i, &x) in points_x.iter().enumerate() {
-            d.insert_point(x, points_y[i]);
+            d.insert_vertex(x, points_y[i]);
         }
         d.n_vertices = d.vertices.len() - 3;
         if make_periodic {
@@ -171,7 +174,22 @@ impl DelaunayTriangulation2D {
         d
     }
 
-    pub fn insert_point(&mut self, x: f64, y: f64) {
+    pub fn finalize(&mut self) {
+        match self.ghost_vertices_offset{
+            Some(offset) => panic!("Delaunay triangulation was already finalized!"),
+            None => self.ghost_vertices_offset = Some(self.vertices.len())
+        }
+    }
+
+    pub fn insert_ghost_vertex(&mut self, x: f64, y: f64, dir: Direction) {
+        if let Some(_) = self.ghost_vertices_offset {
+            self.ghost_vertices_cell_directions.push(dir);
+            self.insert_vertex(x, y);
+        }
+        else { panic!("Trying to add ghost vertex to non-finalized Delaunay triangulation!"); }
+    }
+
+    pub fn insert_vertex(&mut self, x: f64, y: f64) {
         // add vertex
         self.new_vertex(x, y);
 
@@ -211,6 +229,15 @@ impl DelaunayTriangulation2D {
         self.fix_delaunayness();
 
         self.consistency_check();
+    }
+
+    fn new_vertex(&mut self, x: f64, y: f64) -> i32 {
+        // TODO possibly manage the size of self.vertices more intelligently.
+        let (x_scaled, y_scaled) = (x * self.inverse_side, y* self.inverse_side);
+        self.current_vertex_idx = self.vertices.len() as i32;
+        self.vertices.push(DelaunayVertex2D{ x, y, x_scaled, y_scaled, ..DelaunayVertex2D::default()});
+
+        self.current_vertex_idx
     }
 
     fn make_periodic(&mut self) {
@@ -311,7 +338,7 @@ impl DelaunayTriangulation2D {
         while comp_value < search_radius {
             if old_search_radius <= comp_value {
                 let (x, y) = insert_f(vertex);
-                self.insert_point(x, y);
+                self.insert_vertex(x, y);
             }
             if direction == 1 {
                 if i == self.n_vertices - 1 {break;}
@@ -391,15 +418,6 @@ impl DelaunayTriangulation2D {
             idx_in_current_triangle = (current_triangle_idx_in_next_triangle + 1) % 3;
         }
         false
-    }
-
-    fn new_vertex(&mut self, x: f64, y: f64) -> i32 {
-        // TODO possibly manage the size of self.vertices more intelligently.
-        let (x_scaled, y_scaled) = (x * self.inverse_side, y* self.inverse_side);
-        self.current_vertex_idx = self.vertices.len() as i32;
-        self.vertices.push(DelaunayVertex2D{ x, y, x_scaled, y_scaled, ..DelaunayVertex2D::default()});
-
-        self.current_vertex_idx
     }
 
     fn new_triangle(&mut self, v0: i32, v1: i32, v2: i32) -> i32 {
