@@ -59,7 +59,7 @@ impl VoronoiGrid2D {
                                                     triangulation.triangles.len() - 3);
         grid.n_cells = triangulation.n_vertices;
         grid.is_periodic = triangulation.is_periodic;
-        assert!(grid.is_periodic, "Non periodic grids are not yet supported!");
+        // assert!(grid.is_periodic, "Non periodic grids are not yet supported!");
         grid.domain = triangulation.domain;
         // for each triangle of triangulation add the circumcenter to vertices (skip dummy triangles)
         for triangle in triangulation.triangles[3..].iter() {

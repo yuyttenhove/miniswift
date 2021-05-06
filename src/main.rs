@@ -44,11 +44,11 @@ fn main() {
 
     let g = VoronoiGrid2D::from_delaunay_triangulation(&d);
     // println!("{:?}", g);
-    d.to_file("delaunay.txt");
-    g.to_file("voronoi.txt");
+    d.to_file("output/delaunay.txt");
+    g.to_file("output/voronoi.txt");
 
     let g_relax = g.lloyd_relax(0.001, 10);
-    g_relax.to_file("voronoi_relaxed.txt");
+    g_relax.to_file("output/voronoi_relaxed.txt");
 
     do_iact_test();
 }

@@ -1,4 +1,6 @@
 use crate::mini_swift::Cell;
+use crate::tessellations::VoronoiGrid2D;
+use std::panic::panic_any;
 
 impl Cell {
     pub fn update_search_radii(&mut self) -> u32 {
@@ -25,5 +27,23 @@ impl Cell {
             }
         }
         n_updated
+    }
+
+    pub fn end_density(&mut self) {
+        match self.progeny.as_mut() {
+            Some(progeny) => {
+                for cell in progeny {
+                    cell.end_density();
+                }
+            }
+            None => {
+                match self.del_tess.as_ref(){
+                    Some(del_tess) => {
+                        self.vor_tess = Some(VoronoiGrid2D::from_delaunay_triangulation(del_tess));
+                    }
+                    None => panic!("Trying to construct voronoi grid for cell without delaunay triangulation!")
+                }
+            }
+        }
     }
 }

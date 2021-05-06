@@ -47,12 +47,12 @@ def read_file(fname: Path):
 
 
 def main():
-    basename = "test"
-    base_path = Path(__file__).parent
-    fname = base_path / f"{basename}.txt"
-    vertices, triangles = read_file(fname)
 
-    plot_tesselation(vertices, triangles, base_path / f"{basename}.pdf")
+    base_path = Path(__file__).parent
+    for basename in ["del_j", "del_i3"]:
+        fname = base_path / f"{basename}.txt"
+        vertices, triangles = read_file(fname)
+        plot_tesselation(vertices, triangles, base_path / f"{basename}.pdf")
 
 
 if __name__ == "__main__":

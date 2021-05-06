@@ -8,28 +8,29 @@ use rand::SeedableRng;
 fn init_cells_4_by_4() -> (Cell, Cell, Cell, Cell) {
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let mut ci = Cell::from_dimensions([0., 0.], [1., 1.]);
-    let (x_values, y_values) = random_points(40, &ci.domain(), true, &mut rng);
+    let (x_values, y_values) = random_points(50, &ci.domain(), true, &mut rng);
     ci.add_particles(&x_values, &y_values, 0.1);
     ci.split();
     ci.delaunay_init();
     ci.iact_density_self();
 
     let mut cj = Cell::from_dimensions([1., 0.], [1., 1.]);
-    let (x_values, y_values) = random_points(25, &cj.domain(), true, &mut rng);
+    let (x_values, y_values) = random_points(30, &cj.domain(), true, &mut rng);
     cj.add_particles(&x_values, &y_values, 0.1);
     cj.delaunay_init();
     cj.iact_density_self();
 
     let mut ck = Cell::from_dimensions([0., 1.], [1., 1.]);
-    let (x_values, y_values) = random_points(40, &ck.domain(), true, &mut rng);
+    let (x_values, y_values) = random_points(30, &ck.domain(), true, &mut rng);
     ck.add_particles(&x_values, &y_values, 0.1);
-    ck.split();
+    // ck.split();
     ck.delaunay_init();
     ck.iact_density_self();
 
     let mut cl = Cell::from_dimensions([1., 1.], [1., 1.]);
-    let (x_values, y_values) = random_points(25, &cl.domain(), true, &mut rng);
+    let (x_values, y_values) = random_points(50, &cl.domain(), true, &mut rng);
     cl.add_particles(&x_values, &y_values, 0.1);
+    cl.split();
     cl.delaunay_init();
     cl.iact_density_self();
 
@@ -81,6 +82,22 @@ fn do_ghost(ci: &mut Cell, cj: &mut Cell, ck: &mut Cell, cl: &mut Cell) {
         n_updated_l = cl.update_search_radii();
         cur_iter += 1;
     }
+
+    ci.end_density();
+    cj.end_density();
+    ck.end_density();
+    cl.end_density();
+}
+
+fn print_tesselations(ci: &Cell, cj: &Cell, ck: &Cell, cl: &Cell) {
+    ci.progeny.as_ref().unwrap()[3].del_tess.as_ref().unwrap().to_file("output/del_i3.txt");
+    ci.progeny.as_ref().unwrap()[3].vor_tess.as_ref().unwrap().to_file("output/vor_i3.txt");
+    cj.del_tess.as_ref().unwrap().to_file("output/del_j.txt");
+    cj.vor_tess.as_ref().unwrap().to_file("output/vor_j.txt");
+    ck.del_tess.as_ref().unwrap().to_file("output/del_k.txt");
+    ck.vor_tess.as_ref().unwrap().to_file("output/vor_k.txt");
+    cl.progeny.as_ref().unwrap()[3].del_tess.as_ref().unwrap().to_file("output/del_l3.txt");
+    cl.progeny.as_ref().unwrap()[3].vor_tess.as_ref().unwrap().to_file("output/vor_l3.txt");
 }
 
 pub fn do_iact_test() {
@@ -90,8 +107,5 @@ pub fn do_iact_test() {
 
     do_ghost(&mut ci, &mut cj, &mut ck, &mut cl);
 
-    // print del_tess
-    cj.del_tess.as_ref().unwrap().to_file("test.txt");
-    // ci.del_tess.as_ref().unwrap().to_file("test2.txt");
-    ci.progeny.as_ref().unwrap()[3].del_tess.as_ref().unwrap().to_file("test2.txt");
+    print_tesselations(&ci, &cj, &ck, &cl);
 }

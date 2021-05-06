@@ -12,7 +12,7 @@ pub struct Cell {
     particles: Option<Vec<Particle>>,
     pub progeny: Option<[Box<Cell>; 4]>,
     pub del_tess: Option<DelaunayTriangulation2D>,
-    vor_tess: Option<VoronoiGrid2D>,
+    pub vor_tess: Option<VoronoiGrid2D>,
     max_h: f64
 }
 
