@@ -1,5 +1,5 @@
 use crate::mini_swift::Cell;
-use crate::mini_swift::direction::{Direction, get_direction, direction_as_shift, invert_direction, direction_to_sort_list_id};
+use crate::mini_swift::direction::{Direction, get_direction, direction_as_vector, invert_direction, direction_to_sort_list_id};
 use rand_distr::num_traits::abs;
 
 impl Cell{
@@ -53,7 +53,7 @@ impl Cell{
         }
     }
 
-    fn iact_density_pair_base(&mut self, other: &mut Cell, direction: Direction) {
+    fn iact_density_pair_base(&mut self, other: &mut Cell, direction: Direction, shift: [f64; 2]) {
         let del_tess = self.del_tess.as_mut().unwrap();
         let other_del_tess = other.del_tess.as_mut().unwrap();
         let sid = direction_to_sort_list_id(direction);
@@ -62,21 +62,28 @@ impl Cell{
 
         for particle in self.particles.as_mut().unwrap() {
             for other_particle in other.particles.as_mut().unwrap() {
-                let delta_x = particle.x() - other_particle.x();
-                let delta_y = particle.y() - other_particle.y();
+                if other_particle.x() == 1.0502736853580725 {
+                    let a = 0;
+                }
+                let x = particle.x();
+                let y = particle.y();
+                let other_x = (other_particle.x() + shift[0]);
+                let other_y = (other_particle.y() + shift[1]);
+                let delta_x = x - other_x;
+                let delta_y = y - other_y;
                 let dist_2 = delta_x * delta_x + delta_y * delta_y;
                 // first direction
                 // TODO symmetrize?
                 if dist_2 < particle.h * particle.h {
                     if other_particle.added_to_del_tess & 1 << inv_sid == 0 {
-                        del_tess.insert_ghost_vertex(other_particle.x(), other_particle.y(), direction);
+                        del_tess.insert_ghost_vertex(other_x, other_y, direction);
                         other_particle.added_to_del_tess |= 1 << inv_sid;
                     }
                 }
                 // the other direction
                 if dist_2 < other_particle.h * other_particle.h {
                     if particle.added_to_del_tess & 1 << sid == 0 {
-                        other_del_tess.insert_ghost_vertex(particle.x(), particle.y(), invert_direction(direction));
+                        other_del_tess.insert_ghost_vertex(x - shift[0], y - shift[1], invert_direction(direction));
                         particle.added_to_del_tess |= 1 << sid;
                     }
                 }
@@ -84,33 +91,37 @@ impl Cell{
         }
     }
 
-    pub fn iact_density_pair(&mut self, other: &mut Cell, direction: Direction) {
-        if !self.can_interact(other, direction) { return; }
+    pub fn iact_density_pair_shift(&mut self, other: &mut Cell, direction: Direction, shift: [f64; 2]) {
+        if !self.can_interact(other, direction, shift) { return; }
 
         match self.progeny.as_mut() {
             Some(progeny) => {
                 for child in progeny.iter_mut() {
-                    child.iact_density_pair(other, direction);
+                    child.iact_density_pair_shift(other, direction, shift);
                 }
             }
             None => {
                 match other.progeny.as_mut() {
                     Some(ohter_progeny) => {
                         for other_child in ohter_progeny.iter_mut() {
-                            self.iact_density_pair(other_child, direction);
+                            self.iact_density_pair_shift(other_child, direction, shift);
                         }
                     }
-                    None => self.iact_density_pair_base(other, direction)
+                    None => self.iact_density_pair_base(other, direction, shift)
                 }
             }
         }
     }
 
-    fn can_interact(&self, other: &Cell, direction: Direction) -> bool {
+    pub fn iact_density_pair(&mut self, other: &mut Cell, direction: Direction) {
+        self.iact_density_pair_shift(other, direction, [0., 0.]);
+    }
+
+    fn can_interact(&self, other: &Cell, direction: Direction, shift: [f64; 2]) -> bool {
         // Calculate minimal possible distance between a point of self and other
-        let shift = direction_as_shift(direction);
-        let min_delta_x = shift[0] * (self.anchor()[0] + self.sides()[0]*shift[0] - other.anchor()[0]);
-        let min_delta_y = shift[1] * (self.anchor()[1] + self.sides()[1]*shift[1] - other.anchor()[1]);
+        let direction_vec = direction_as_vector(direction);
+        let min_delta_x = direction_vec[0] * (self.anchor()[0] + self.sides()[0]* direction_vec[0] - (other.anchor()[0] + shift[0]));
+        let min_delta_y = direction_vec[1] * (self.anchor()[1] + self.sides()[1]* direction_vec[1] - (other.anchor()[1] + shift[1]));
         let min_dist = min_delta_x * min_delta_x + min_delta_y * min_delta_y;
         // Can interact?
         min_dist < self.max_h * self.max_h || min_dist < other.max_h * other.max_h

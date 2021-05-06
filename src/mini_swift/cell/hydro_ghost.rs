@@ -10,8 +10,11 @@ impl Cell {
                 for (i, particle) in particles.iter_mut().enumerate() {
                     let search_radius = del_tess.vertices[i + 3].search_radius;
                     if del_tess.vertices[i + 3].search_radius > particle.h {
-                        particle.h *= 1.5;
+                        particle.h *= 1.25;
                         n_updated += 1;
+                        if particle.h > self.max_h {
+                            self.max_h = particle.h;
+                        }
                     }
                 }
             }

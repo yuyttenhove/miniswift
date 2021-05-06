@@ -11,8 +11,8 @@ def plot_tesselation(vertices, triangles, savename):
     _, ax = subplots(figsize=(10, 10))
     ax = sns.scatterplot(data=vertices, x="x", y="y", s=16, ax=ax, color="black", zorder=2)
     ax.triplot(vertices["x"], vertices["y"], triangles=triangles, lw=1, color="darkgray")
-    ax.set_xlim([0, 2])
-    ax.set_ylim([-.5, 1.5])
+    ax.set_xlim([-1.5, 3.5])
+    ax.set_ylim([-1.5, 3.5])
     # ax.get_xaxis().set_visible(False)
     # ax.get_yaxis().set_visible(False)
     ax.set_aspect("equal")
@@ -47,7 +47,7 @@ def read_file(fname: Path):
 
 
 def main():
-    basename = "test2"
+    basename = "test"
     base_path = Path(__file__).parent
     fname = base_path / f"{basename}.txt"
     vertices, triangles = read_file(fname)

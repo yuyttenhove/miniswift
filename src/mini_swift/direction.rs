@@ -40,7 +40,7 @@ pub fn invert_direction(dir: Direction) -> Direction {
     }
 }
 
-pub fn direction_as_shift(dir: Direction) -> [f64; 2] {
+pub fn direction_as_vector(dir: Direction) -> [f64; 2] {
     match dir {
         Direction::RightDown => [1., -1.],
         Direction::Right => [1., 0.],
