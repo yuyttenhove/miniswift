@@ -28,11 +28,26 @@ def plot_tesselation(vertices, cells, centroids, fname):
     # ax = sns.scatterplot(data=vertices, x="x", y="y", s=8, color="blue", ax=ax)
     cells_xy_list = [vertices.values[cell_idx, :] for cell_idx in cells]
     patches = [plt.Polygon(xy, closed=True, edgecolor="blue", facecolor="none", linewidth=1) for xy in cells_xy_list]
+
+    grid = [
+        np.array([[0, 0], [.5, 0], [.5, .5], [0, .5]]),  # ci
+        np.array([[.5, 0], [1, 0], [1, .5], [.5, .5]]),  # ci
+        np.array([[0, .5], [.5, .5], [.5, 1], [0, 1]]),  # ci
+        np.array([[.5, .5], [1, .5], [1, 1], [.5, 1]]),  # ci
+        np.array([[1, 0], [2, 0], [2, 1], [1, 1]]),  # cj
+        np.array([[0, 1], [1, 1], [1, 2], [0, 2]]),  # ck
+        np.array([[1, 1], [1.5, 1], [1.5, 1.5], [1, 1.5]]),  # cl
+        np.array([[1.5, 1], [2, 1], [2, 1.5], [1.5, 1.5]]),  # cl
+        np.array([[1, 1.5], [1.5, 1.5], [1.5, 2], [1, 2]]),  # cl
+        np.array([[1.5, 1.5], [2, 1.5], [2, 2], [1.5, 2]]),  # cl
+    ]
+    patches.extend([plt.Polygon(g, closed=True, edgecolor="red", facecolor="none", linewidth=1, ls="--") for g in grid])
     ax.add_collection(PatchCollection(patches, match_original=True))
-    ax.set_xlim([-1.5, 3.5])
-    ax.set_ylim([-1.5, 3.5])
-    # ax.get_xaxis().set_visible(False)
-    # ax.get_yaxis().set_visible(False)
+
+    ax.set_xlim([-.5, 2.5])
+    ax.set_ylim([-.5, 2.5])
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
     ax.set_aspect("equal")
     plt.tight_layout()
     plt.savefig(fname)
