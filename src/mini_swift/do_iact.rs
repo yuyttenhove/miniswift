@@ -8,27 +8,27 @@ use rand::SeedableRng;
 fn init_cells_4_by_4() -> (Cell, Cell, Cell, Cell) {
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let mut ci = Cell::from_dimensions([0., 0.], [1., 1.]);
-    let (x_values, y_values) = random_points(50, &ci.domain(), true, &mut rng);
+    let (x_values, y_values) = random_points(100, &ci.domain(), true, &mut rng);
     ci.add_particles(&x_values, &y_values, 0.1);
     ci.split();
     ci.delaunay_init();
     ci.iact_density_self();
 
     let mut cj = Cell::from_dimensions([1., 0.], [1., 1.]);
-    let (x_values, y_values) = random_points(30, &cj.domain(), true, &mut rng);
+    let (x_values, y_values) = random_points(50, &cj.domain(), true, &mut rng);
     cj.add_particles(&x_values, &y_values, 0.1);
     cj.delaunay_init();
     cj.iact_density_self();
 
     let mut ck = Cell::from_dimensions([0., 1.], [1., 1.]);
-    let (x_values, y_values) = random_points(30, &ck.domain(), true, &mut rng);
+    let (x_values, y_values) = random_points(50, &ck.domain(), true, &mut rng);
     ck.add_particles(&x_values, &y_values, 0.1);
     // ck.split();
     ck.delaunay_init();
     ck.iact_density_self();
 
     let mut cl = Cell::from_dimensions([1., 1.], [1., 1.]);
-    let (x_values, y_values) = random_points(50, &cl.domain(), true, &mut rng);
+    let (x_values, y_values) = random_points(100, &cl.domain(), true, &mut rng);
     cl.add_particles(&x_values, &y_values, 0.1);
     cl.split();
     cl.delaunay_init();
@@ -90,14 +90,18 @@ fn do_ghost(ci: &mut Cell, cj: &mut Cell, ck: &mut Cell, cl: &mut Cell) {
 }
 
 fn print_tesselations(ci: &Cell, cj: &Cell, ck: &Cell, cl: &Cell) {
-    ci.progeny.as_ref().unwrap()[3].del_tess.as_ref().unwrap().to_file("output/del_i3.txt");
-    ci.progeny.as_ref().unwrap()[3].vor_tess.as_ref().unwrap().to_file("output/vor_i3.txt");
+    for i in 0..4 {
+        ci.progeny.as_ref().unwrap()[i].del_tess.as_ref().unwrap().to_file(&format!("output/del_i{}.txt", i));
+        ci.progeny.as_ref().unwrap()[i].vor_tess.as_ref().unwrap().to_file(&format!("output/vor_i{}.txt", i));
+    }
     cj.del_tess.as_ref().unwrap().to_file("output/del_j.txt");
     cj.vor_tess.as_ref().unwrap().to_file("output/vor_j.txt");
     ck.del_tess.as_ref().unwrap().to_file("output/del_k.txt");
     ck.vor_tess.as_ref().unwrap().to_file("output/vor_k.txt");
-    cl.progeny.as_ref().unwrap()[3].del_tess.as_ref().unwrap().to_file("output/del_l3.txt");
-    cl.progeny.as_ref().unwrap()[3].vor_tess.as_ref().unwrap().to_file("output/vor_l3.txt");
+    for i in 0..4 {
+        cl.progeny.as_ref().unwrap()[i].del_tess.as_ref().unwrap().to_file(&format!("output/del_l{}.txt", i));
+        cl.progeny.as_ref().unwrap()[i].vor_tess.as_ref().unwrap().to_file(&format!("output/vor_l{}.txt", i));
+    }
 }
 
 pub fn do_iact_test() {

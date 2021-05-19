@@ -11,8 +11,8 @@ impl Cell {
                 del_tess.update_vertex_search_radii(0., del_tess.n_vertices);
                 for (i, particle) in particles.iter_mut().enumerate() {
                     let search_radius = del_tess.vertices[i + 3].search_radius;
-                    if del_tess.vertices[i + 3].search_radius > particle.h {
-                        particle.h *= 1.25;
+                    if del_tess.vertices[i + 3].search_radius > particle.h * 0.95 {
+                        particle.h *= 1.1;
                         n_updated += 1;
                         if particle.h > self.max_h {
                             self.max_h = particle.h;
